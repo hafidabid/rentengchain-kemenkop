@@ -85,7 +85,8 @@ model Member {
   passwordHash String? @map("password_hash") @db.VarChar(255)
 
   // Web3 (populated by add-web3-relayer; nullable here so no later schema change).
-  encryptedPrivkey String? @map("encrypted_privkey")
+  encryptedPrivkey  String? @map("encrypted_privkey")
+  onchainRegistered Boolean @default(false) @map("onchain_registered")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
@@ -108,6 +109,7 @@ model Group {
   kasSosial         Decimal           @default(0) @map("kas_sosial") @db.Decimal(15, 2)
   reputasiKomunitas ReputasiKomunitas @map("reputasi_komunitas")
   kodeUndangan      String            @unique @map("kode_undangan") @db.VarChar(20)
+  onchainRegistered Boolean           @default(false) @map("onchain_registered")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at")
 
@@ -148,6 +150,8 @@ model Loan {
   isSanggah             Boolean       @default(false) @map("is_sanggah")
   sanggahAlasan         String?       @map("sanggah_alasan")
   escrowContractAddress String?       @map("escrow_contract_address") @db.VarChar(42)
+  onchainLoanId         BigInt?       @map("onchain_loan_id")
+  txHash                String?       @map("tx_hash") @db.VarChar(66)
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at")
 

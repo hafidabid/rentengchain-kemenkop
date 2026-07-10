@@ -12,11 +12,20 @@ const cfg = (overrides: Record<string, string> = {}): ConfigService =>
 
 describe('ContractClientService', () => {
   const hashing = new HashingService(cfg({ COOP_HASH_SALT: 'salt' }));
-  // No RELAYER_PRIVATE_KEY => read-only relayer.
+  // No keys => both signers absent (read-only).
   const relayer = new RelayerService(cfg());
   const client = new ContractClientService(cfg(), relayer);
 
   const NIK = '3273011122334455';
+
+  // --- Role routing ---
+  it('maps methods to the correct signing role', () => {
+    expect(client.roleFor('recordSavings')).toBe('RELAYER');
+    expect(client.roleFor('createLoan')).toBe('RELAYER');
+    expect(client.roleFor('registerMember')).toBe('KOPERASI');
+    expect(client.roleFor('approveLoan')).toBe('KOPERASI');
+    expect(client.roleFor('resolveAppeal')).toBe('KOPERASI');
+  });
 
   // --- Offline calldata build ---
   it('encodes recordSavings calldata targeting the deployed escrow', () => {
@@ -29,7 +38,6 @@ describe('ContractClientService', () => {
     ]);
     expect(call.address).toBe('0x199812B240bf8d90dBAfB5C7E2ab79e3fAf728dE');
     expect(call.data).toMatch(/^0x[0-9a-f]+$/);
-    // Round-trips through the ABI back to the same args.
     const decoded = decodeFunctionData({ abi: ESCROW_ABI, data: call.data });
     expect(decoded.functionName).toBe('recordSavings');
   });
@@ -49,20 +57,34 @@ describe('ContractClientService', () => {
         (typeof arg === 'string' && /^0x[0-9a-fA-F]+$/.test(arg));
       expect(ok).toBe(true);
     }
-    // The raw NIK must never appear anywhere in the calldata.
     expect(call.data.includes(NIK)).toBe(false);
     expect(call.args).not.toContain(NIK);
   });
 
-  // --- Write path guard ---
-  it('refuses to submit without a configured relayer key', async () => {
-    await expect(client.submit('approveLoan', [1n])).rejects.toThrow(
+  // --- Write path guards (role-aware) ---
+  it('submit() a RELAYER method throws about RELAYER_PRIVATE_KEY when unset', async () => {
+    await expect(client.submit('recordSavings', [])).rejects.toThrow(
       /RELAYER_PRIVATE_KEY/,
     );
   });
 
-  it('reports read-only mode when no key is set', () => {
-    expect(relayer.canWrite).toBe(false);
-    expect(relayer.address).toBeNull();
+  it('submit() a KOPERASI method throws about ADMIN_PRIVATE_KEY when unset', async () => {
+    await expect(client.submit('approveLoan', [1n])).rejects.toThrow(
+      /ADMIN_PRIVATE_KEY/,
+    );
+  });
+
+  it('trySubmit() degrades gracefully to { ok:false } instead of throwing', async () => {
+    const res = await client.trySubmit('registerMember', []);
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/ADMIN_PRIVATE_KEY/);
+  });
+
+  it('reports which methods are submittable given configured signers', () => {
+    expect(client.canSubmit('recordSavings')).toBe(false);
+    expect(client.canSubmit('approveLoan')).toBe(false);
+    expect(relayer.canWrite('RELAYER')).toBe(false);
+    expect(relayer.relayerAddress).toBeNull();
+    expect(relayer.adminAddress).toBeNull();
   });
 });

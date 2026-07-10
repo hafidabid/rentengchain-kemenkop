@@ -6,12 +6,32 @@
 export const ESCROW_ABI = [
   {
     type: 'function',
+    name: 'nextLoanId',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
     name: 'registerMember',
     stateMutability: 'nonpayable',
     inputs: [
       { name: 'memberHash', type: 'bytes32' },
       { name: 'koperasiId', type: 'bytes32' },
       { name: 'wallet', type: 'address' },
+    ],
+    outputs: [],
+  },
+  {
+    type: 'function',
+    name: 'registerGroup',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'groupId', type: 'bytes32' },
+      { name: 'koperasiId', type: 'bytes32' },
+      { name: 'chairHash', type: 'bytes32' },
+      { name: 'plafonMaks', type: 'uint256' },
+      { name: 'inviteCodeHash', type: 'bytes32' },
     ],
     outputs: [],
   },
