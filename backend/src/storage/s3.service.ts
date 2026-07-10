@@ -12,6 +12,14 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
+/** Prepend https:// when a configured URL/host omits the scheme, so scheme-less
+ * env (e.g. a bare CDN host) doesn't produce an invalid endpoint. */
+function withScheme(value?: string): string | undefined {
+  const v = value?.trim();
+  if (!v) return undefined;
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
 /**
  * Object storage for KTP images. Targets AWS S3 or any S3-compatible endpoint
  * (MinIO/LocalStack) via env. Boots even when unconfigured — operations then
@@ -30,8 +38,8 @@ export class S3Service {
   constructor(config: ConfigService) {
     this.bucket = config.get<string>('S3_BUCKET', 'rantai-renteng-ktp');
     this.region = config.get<string>('S3_REGION', 'us-east-1');
-    this.endpoint = config.get<string>('S3_ENDPOINT') || undefined;
-    this.publicUrlBase = config.get<string>('S3_PUBLIC_URL_BASE') || undefined;
+    this.endpoint = withScheme(config.get<string>('S3_ENDPOINT'));
+    this.publicUrlBase = withScheme(config.get<string>('S3_PUBLIC_URL_BASE'));
     const accessKeyId = config.get<string>('S3_ACCESS_KEY_ID');
     const secretAccessKey = config.get<string>('S3_SECRET_ACCESS_KEY');
     const forcePathStyle =

@@ -1,0 +1,57 @@
+# Production stack for RantaiRenteng. Backend + Postgres + built frontend.
+# Containers publish only on 127.0.0.1 — the host nginx (see deploy/) terminates
+# TLS and reverse-proxies the two public domains to them.
+name: rantairenteng
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rantairenteng-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-rantai}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-rantai_prod_pw}
+      POSTGRES_DB: ${DB_NAME:-rantairenteng}
+    volumes:
+      - rantairenteng_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-rantai} -d ${DB_NAME:-rantairenteng}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: rantairenteng-backend
+    restart: unless-stopped
+    # Secrets (relayer/admin keys, JWT, S3) come from backend/.env on the server.
+    env_file:
+      - ./backend/.env
+    # These override anything in backend/.env for the container environment.
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      DATABASE_URL: postgresql://${DB_USER:-rantai}:${DB_PASSWORD:-rantai_prod_pw}@db:5432/${DB_NAME:-rantairenteng}?schema=public
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3001:3001'
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://renteng-chain-api.talentor.tech}
+        VITE_DEMO_GROUP_ID: ${VITE_DEMO_GROUP_ID:-e5f6a7b8-9c0d-41e2-8a4b-5c6d7e8f9a0b}
+    container_name: rantairenteng-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '127.0.0.1:8080:80'
+
+volumes:
+  rantairenteng_pgdata:

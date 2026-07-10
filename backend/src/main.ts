@@ -20,7 +20,18 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
     }),
   );
-  app.enableCors();
+
+  // CORS: default allow-all so the browser frontend (different origin) can call
+  // the API. Restrict via CORS_ORIGIN (comma-separated) in production if desired.
+  const corsOrigin = config.get<string>('CORS_ORIGIN', '*');
+  app.enableCors({
+    origin:
+      corsOrigin === '*'
+        ? '*'
+        : corsOrigin.split(',').map((o) => o.trim()),
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
 
   const port = config.get<number>('PORT', 3001);
   await app.listen(port);
