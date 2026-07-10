@@ -6,6 +6,10 @@ import { AuthModule } from './auth/auth.module';
 import { MembersModule } from './members/members.module';
 import { GroupsModule } from './groups/groups.module';
 import { AuditModule } from './audit/audit.module';
+import { KycModule } from './kyc/kyc.module';
+import { SavingsModule } from './savings/savings.module';
+import { LoansModule } from './loans/loans.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -15,6 +19,10 @@ import { AuditModule } from './audit/audit.module';
     MembersModule,
     GroupsModule,
     AuditModule,
+    KycModule,
+    SavingsModule,
+    LoansModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })
