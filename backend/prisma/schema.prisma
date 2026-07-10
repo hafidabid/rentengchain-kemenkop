@@ -1,0 +1,185 @@
+// RantaiRenteng canonical data model.
+// DB stays snake_case (@map / @@map); Prisma models are camelCase, which gives the
+// mockup's camelCase API shape for free. Source of truth: openspec + brainstorm/claude0.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Peran {
+  penabung
+  peminjam
+  keduanya
+}
+
+enum StatusKyc {
+  Requested
+  Approved
+  Rejected
+}
+
+enum Role {
+  Anggota
+  Pengurus
+}
+
+enum ReputasiKomunitas {
+  baik
+  cukup
+  kurang
+}
+
+enum LoanStatus {
+  Diajukan
+  Disetujui
+  Cair
+  Lunas
+  Mangkir
+  Ditunda
+}
+
+enum StatusCicilan {
+  PAID
+  UNPAID
+  TUNGGAKAN
+  DITALANGI
+}
+
+enum SavingJenis {
+  Pokok
+  Wajib
+  Sukarela
+}
+
+enum SavingStatus {
+  PAID
+  PENDING
+}
+
+model Member {
+  id               String    @id @default(uuid()) @db.Uuid
+  nama             String    @db.VarChar(150)
+  nik              String    @unique @db.VarChar(16)
+  noHp             String    @map("no_hp") @db.VarChar(20)
+  alamat           String
+  pekerjaan        String    @db.VarChar(100)
+  peran            Peran
+  statusKyc        StatusKyc @map("status_kyc")
+  skorKeanggotaan  Int       @default(100) @map("skor_keanggotaan")
+  ktpUrl           String?   @map("ktp_url") @db.VarChar(255)
+  simpananPokok    Decimal   @default(0) @map("simpanan_pokok") @db.Decimal(15, 2)
+  simpananWajib    Decimal   @default(0) @map("simpanan_wajib") @db.Decimal(15, 2)
+  simpananSukarela Decimal   @default(0) @map("simpanan_sukarela") @db.Decimal(15, 2)
+  isDorman         Boolean   @default(false) @map("is_dorman")
+  isUzur           Boolean   @default(false) @map("is_uzur")
+  jumlahIzinUzur   Int       @default(0) @map("jumlah_izin_uzur")
+  walletAddress    String?   @map("wallet_address") @db.VarChar(42)
+
+  // Auth (foundation) — never serialized in API responses.
+  role         Role    @default(Anggota)
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+
+  // Web3 (populated by add-web3-relayer; nullable here so no later schema change).
+  encryptedPrivkey String? @map("encrypted_privkey")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  ledGroups    Group[]             @relation("GroupKetua")
+  memberships  MemberGroup[]
+  loans        Loan[]
+  savings      SavingTransaction[]
+
+  @@map("members")
+}
+
+model Group {
+  id                String            @id @default(uuid()) @db.Uuid
+  nama              String            @db.VarChar(100)
+  ketuaId           String?           @map("ketua_id") @db.Uuid
+  plafonMaks        Decimal           @default(10000000) @map("plafon_maks") @db.Decimal(15, 2)
+  jadwalPertemuan   String            @map("jadwal_pertemuan") @db.VarChar(100)
+  kehadiranRate     Decimal           @default(100) @map("kehadiran_rate") @db.Decimal(5, 2)
+  kasSosial         Decimal           @default(0) @map("kas_sosial") @db.Decimal(15, 2)
+  reputasiKomunitas ReputasiKomunitas @map("reputasi_komunitas")
+  kodeUndangan      String            @unique @map("kode_undangan") @db.VarChar(20)
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  ketua   Member?       @relation("GroupKetua", fields: [ketuaId], references: [id], onDelete: SetNull)
+  members MemberGroup[]
+  loans   Loan[]
+
+  @@map("groups")
+}
+
+model MemberGroup {
+  memberId String   @map("member_id") @db.Uuid
+  groupId  String   @map("group_id") @db.Uuid
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, groupId])
+  @@map("member_groups")
+}
+
+model Loan {
+  id                    String        @id @default(uuid()) @db.Uuid
+  memberId              String        @map("member_id") @db.Uuid
+  groupId               String        @map("group_id") @db.Uuid
+  nominal               Decimal       @db.Decimal(15, 2)
+  tujuan                String
+  tenor                 Int
+  status                LoanStatus
+  statusCicilan         StatusCicilan @map("status_cicilan")
+  sisaCicilan           Int           @map("sisa_cicilan")
+  cicilanBulanan        Decimal       @map("cicilan_bulanan") @db.Decimal(15, 2)
+  jadwalCicilan         String        @map("jadwal_cicilan") @db.VarChar(100)
+  skorAi                Int           @map("skor_ai")
+  flagAi                String        @map("flag_ai") @db.VarChar(15)
+  flagAlasan            Json          @default("[]") @map("flag_alasan")
+  isSanggah             Boolean       @default(false) @map("is_sanggah")
+  sanggahAlasan         String?       @map("sanggah_alasan")
+  escrowContractAddress String?       @map("escrow_contract_address") @db.VarChar(42)
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("loans")
+}
+
+model SavingTransaction {
+  id       String       @id @default(uuid()) @db.Uuid
+  memberId String       @map("member_id") @db.Uuid
+  jenis    SavingJenis
+  nominal  Decimal      @db.Decimal(15, 2)
+  tanggal  DateTime     @default(now())
+  metode   String       @db.VarChar(50)
+  status   SavingStatus
+  txHash   String?      @map("tx_hash") @db.VarChar(66)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("saving_transactions")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  timestamp DateTime @default(now())
+  aktor     String   @db.VarChar(150)
+  aksi      String   @db.VarChar(100)
+  detail    String
+  txHash    String?  @map("tx_hash") @db.VarChar(66)
+
+  @@map("audit_logs")
+}

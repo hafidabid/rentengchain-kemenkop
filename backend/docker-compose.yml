@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rantairenteng-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rantai
+      POSTGRES_PASSWORD: rantai
+      POSTGRES_DB: rantairenteng
+    ports:
+      - '5433:5432'
+    volumes:
+      - rantairenteng_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rantai -d rantairenteng']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  rantairenteng_pgdata:
