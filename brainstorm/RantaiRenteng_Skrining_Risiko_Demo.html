@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RantaiRenteng — Asisten Skrining Risiko (Demo)</title>
+<style>
+  :root{--navy:#1F3864;--blue:#2E5496;--teal:#2F6B6B;--amber:#C55A11;--green:#548235;
+    --red:#C0392B;--bg:#f4f6fa;--card:#fff;--line:#dfe4ee;--ink:#1d2433;--muted:#5b6b86}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5}
+  .wrap{max-width:1040px;margin:0 auto;padding:14px}
+  header.hero{background:linear-gradient(135deg,var(--navy),var(--teal));color:#fff;border-radius:16px;
+    padding:20px;margin-bottom:12px;box-shadow:0 6px 20px rgba(31,56,100,.25)}
+  header.hero .tag{display:inline-block;background:rgba(255,255,255,.16);padding:3px 10px;border-radius:20px;
+    font-size:.7rem;font-weight:700;margin-bottom:8px}
+  header.hero h1{font-size:1.35rem}
+  header.hero p{opacity:.92;font-size:.85rem;margin-top:6px}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:860px){.grid{grid-template-columns:1.05fr .95fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .card h2{font-size:.95rem;color:var(--navy);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .card h2 .n{background:var(--amber);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;
+    align-items:center;justify-content:center;font-size:.75rem;flex:0 0 auto}
+  .sub{font-size:.74rem;color:var(--muted);margin-bottom:10px}
+  label{display:block;font-size:.78rem;font-weight:600;color:#37425c;margin:8px 0 3px}
+  input[type=range]{width:100%}
+  .rowval{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted)}
+  select,input[type=number],input[type=text]{width:100%;padding:7px 9px;border:1px solid var(--line);
+    border-radius:8px;font-size:.82rem;background:#fbfcfe}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .consent{display:flex;align-items:center;gap:10px;background:#fff8ec;border:1px solid #f2dcae;border-radius:10px;
+    padding:10px 12px;margin-bottom:10px;font-size:.82rem;color:#6b4e1a}
+  .switch{position:relative;width:44px;height:24px;flex:0 0 auto}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#c9c9c9;border-radius:24px;transition:.2s;cursor:pointer}
+  .slider:before{content:"";position:absolute;height:18px;width:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .switch input:checked+.slider{background:var(--green)}
+  .switch input:checked+.slider:before{transform:translateX(20px)}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .presets button{border:1px solid var(--line);background:#fff;color:var(--navy);padding:7px 10px;border-radius:20px;
+    font-size:.74rem;font-weight:700;cursor:pointer}
+  .presets button:hover{background:#eef2fb}
+  .flagbox{border:1px dashed #d6deea;border-radius:10px;padding:8px;margin-top:6px}
+  .flagrow{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-top:6px;font-size:.76rem}
+  .flagrow select{font-size:.74rem;padding:5px}
+  .chk{display:flex;align-items:center;gap:4px;font-size:.72rem;color:#37425c;white-space:nowrap}
+  .del{background:#fbe6e3;color:#a5271b;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-weight:700}
+  .addflag{margin-top:8px;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:7px 11px;
+    font-size:.76rem;font-weight:700;cursor:pointer}
+  /* result */
+  .gauge{display:flex;align-items:center;gap:14px}
+  .score{width:96px;height:96px;border-radius:50%;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;color:#fff;flex:0 0 auto}
+  .score b{font-size:1.7rem;line-height:1}.score span{font-size:.62rem;opacity:.9}
+  .band{font-weight:800;font-size:1.02rem}
+  .band small{display:block;font-weight:600;color:var(--muted);font-size:.74rem;margin-top:2px}
+  .pill{display:inline-block;font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff}
+  .bars{margin-top:12px}
+  .bar{margin:7px 0}
+  .bar .lab{display:flex;justify-content:space-between;font-size:.74rem;margin-bottom:2px}
+  .track{height:9px;background:#eef1f6;border-radius:6px;overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+  .factors{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+  .factor{display:flex;justify-content:space-between;font-size:.76rem;padding:3px 0;color:#39435a}
+  .factor .p{font-weight:700;color:var(--navy)}
+  .adverse{margin-top:10px}
+  .flagcard{border-left:4px solid var(--amber);background:#fff8ee;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:.78rem}
+  .flagcard.ver{border-left-color:var(--red);background:#fdecea}
+  .flagcard .h{font-weight:700;display:flex;justify-content:space-between;gap:8px}
+  .reco{margin-top:12px;border-radius:10px;padding:11px 13px;font-size:.84rem;font-weight:600}
+  .gov{margin-top:12px;font-size:.72rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+  .appeal{margin-top:8px;background:#eef2fb;border:1px solid #cdd9f0;color:#274a86;border-radius:8px;padding:7px 11px;
+    font-size:.76rem;font-weight:700;cursor:pointer}
+  .warnbar{background:#fdecea;color:#7d241a;border:1px solid #f3c6c0;border-radius:8px;padding:8px 11px;font-size:.78rem;margin-top:8px;display:none}
+  footer{text-align:center;color:#8290a8;font-size:.72rem;margin:16px 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="tag">RANTAIRENTENG · ASISTEN SKRINING RISIKO (DEMO)</span>
+    <h1>Deteksi Dini Risiko untuk Ketua Tanggung Renteng</h1>
+    <p>Menggabungkan 4 pilar: rekam internal koperasi, kapasitas (terverifikasi), referensi grup, dan sinyal adverse yang sah. Hasil = <b>peringatan yang bisa ditinjau</b>, bukan vonis. Data contoh — geser & ubah untuk simulasi.</p>
+  </header>
+
+  <div class="consent">
+    <label class="switch"><input type="checkbox" id="consent" checked><span class="slider"></span></label>
+    <div><b>Persetujuan skrining (consent)</b> — wajib menyala. Tanpa consent, sistem menolak memproses (UU PDP No. 27/2022).</div>
+  </div>
+
+  <div class="presets">
+    <span style="font-size:.74rem;font-weight:700;color:var(--muted);align-self:center">Contoh kasus:</span>
+    <button onclick="preset('sri')">Bu Sri — disiplin</button>
+    <button onclick="preset('x')">Pak X — terlihat baik, tunggakan tersembunyi</button>
+    <button onclick="preset('y')">Bu Y — flag belum terverifikasi</button>
+    <button onclick="preset('blank')">Kosongkan</button>
+  </div>
+
+  <div class="grid">
+    <!-- INPUT -->
+    <div>
+      <div class="card">
+        <h2><span class="n">1</span> Rekam Internal Koperasi</h2>
+        <div class="sub">Bobot tertinggi (45) — perilaku nyata di koperasi, 100% legal.</div>
+        <label>Simpanan wajib tepat waktu: <b id="l_sim">90%</b></label>
+        <input type="range" id="sim" min="0" max="100" value="90" oninput="recalc()">
+        <label>Riwayat cicilan tepat waktu: <b id="l_cic">—</b></label>
+        <input type="range" id="cic" min="-1" max="100" value="-1" oninput="recalc()">
+        <div class="rowval"><span>-1 = belum ada riwayat (anggota baru)</span></div>
+        <div class="two">
+          <div><label>Lama keanggotaan (bln)</label><input type="number" id="ten" value="12" min="0" oninput="recalc()"></div>
+          <div><label>Kehadiran pertemuan: <b id="l_had">80%</b></label><input type="range" id="had" min="0" max="100" value="80" oninput="recalc()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">2</span> Kapasitas Bayar (self-declared)</h2>
+        <div class="sub">Bobot 30 — perlu verifikasi silang.</div>
+        <div class="two">
+          <div><label>Penghasilan bulanan (Rp)</label><input type="number" id="inc" value="3500000" step="100000" oninput="recalc()"></div>
+          <div><label>Total cicilan/bln (Rp)</label><input type="number" id="deb" value="900000" step="100000" oninput="recalc()"></div>
+        </div>
+        <div class="two">
+          <div><label>Stabilitas penghasilan</label>
+            <select id="stab" onchange="recalc()"><option value="tetap">Tetap</option><option value="musiman">Musiman</option><option value="tidak_tetap" selected>Tidak tetap</option></select></div>
+          <div><label>Status verifikasi</label>
+            <select id="ver" onchange="recalc()"><option value="0" selected>Belum diverifikasi</option><option value="1">Terverifikasi</option></select></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">3</span> Referensi Sosial Grup</h2>
+        <div class="sub">Bobot 25 — inti tanggung renteng (structured vouching).</div>
+        <div class="two">
+          <div><label>Jaminan ketua grup</label>
+            <select id="vouch" onchange="recalc()"><option value="ya">Ya, menjamin</option><option value="ragu" selected>Ragu</option><option value="tidak">Tidak</option></select></div>
+          <div><label>Reputasi komunitas</label>
+            <select id="rep" onchange="recalc()"><option value="baik">Baik</option><option value="cukup" selected>Cukup</option><option value="kurang">Kurang</option></select></div>
+        </div>
+        <div class="two">
+          <div><label>Anggota grup kenal &gt;1 thn</label><input type="number" id="know" value="4" min="0" oninput="recalc()"></div>
+          <div><label>Ukuran grup</label><input type="number" id="gs" value="8" min="1" oninput="recalc()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="n">4</span> Sinyal Adverse (publik, dengan izin)</h2>
+        <div class="sub">Flag dari sumber sah (lintas-data koperasi, daftar/registrasi resmi). BUKAN medsos pribadi. Flag "belum terverifikasi" tidak memotong skor.</div>
+        <div id="flags" class="flagbox"></div>
+        <button class="addflag" onclick="addFlag()">+ Tambah flag</button>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div>
+      <div class="card" style="position:sticky;top:10px">
+        <h2>📋 Hasil Skrining</h2>
+        <div class="sub" id="cand">—</div>
+        <div class="gauge">
+          <div class="score" id="score"><b>0</b><span>/100</span></div>
+          <div>
+            <div class="band" id="band">—</div>
+            <div style="margin-top:6px"><span class="pill" id="confpill" style="background:#888">confidence —</span></div>
+          </div>
+        </div>
+        <div class="warnbar" id="warn"></div>
+
+        <div class="bars">
+          <div class="bar"><div class="lab"><span>Rekam Internal</span><span id="v1">0/45</span></div><div class="track"><div class="fill" id="b1" style="background:var(--blue)"></div></div></div>
+          <div class="bar"><div class="lab"><span>Kapasitas</span><span id="v2">0/30</span></div><div class="track"><div class="fill" id="b2" style="background:var(--teal)"></div></div></div>
+          <div class="bar"><div class="lab"><span>Referensi Sosial</span><span id="v3">0/25</span></div><div class="track"><div class="fill" id="b3" style="background:var(--amber)"></div></div></div>
+          <div class="bar"><div class="lab"><span>Pengurang Adverse</span><span id="v4">-0</span></div><div class="track"><div class="fill" id="b4" style="background:var(--red)"></div></div></div>
+        </div>
+
+        <div class="adverse" id="advout"></div>
+        <div class="factors" id="factors"></div>
+        <div class="reco" id="reco"></div>
+        <button class="appeal" onclick="alert('Simulasi: anggota mengajukan sanggahan atas flag. Kasus dikirim ke pengurus untuk verifikasi ulang sebelum keputusan.')">⚖️ Ajukan sanggahan (hak anggota)</button>
+        <div class="gov">Peringatan bantu keputusan, BUKAN vonis. Keputusan akhir di ketua grup + pengurus. Atribut sensitif (gender, agama, suku) tidak dipakai. Skor & alasan tercatat untuk audit.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>RantaiRenteng · Prototipe skrining risiko (demo edukatif, data contoh) · 10 Juli 2026</footer>
+</div>
+
+<script>
+const DED={"Tunggakan tersembunyi":25,"Ketidaksesuaian data":12,"Catatan hukum keuangan":20,"Berita negatif keuangan":10};
+const FLAGTYPES=Object.keys(DED);
+let flags=[];
+
+function addFlag(type="Berita negatif keuangan",verified=false){
+  flags.push({type,verified}); renderFlags(); recalc();
+}
+function renderFlags(){
+  const box=document.getElementById('flags'); box.innerHTML='';
+  if(flags.length===0){box.innerHTML='<div style="font-size:.74rem;color:#8290a8">Belum ada flag.</div>';}
+  flags.forEach((f,i)=>{
+    const row=document.createElement('div'); row.className='flagrow';
+    const sel=document.createElement('select');
+    FLAGTYPES.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;if(t===f.type)o.selected=true;sel.appendChild(o);});
+    sel.onchange=e=>{flags[i].type=e.target.value;recalc();};
+    const chk=document.createElement('label'); chk.className='chk';
+    chk.innerHTML=`<input type="checkbox" ${f.verified?'checked':''}> terverifikasi`;
+    chk.querySelector('input').onchange=e=>{flags[i].verified=e.target.checked;recalc();};
+    const del=document.createElement('button'); del.className='del'; del.textContent='✕';
+    del.onclick=()=>{flags.splice(i,1);renderFlags();recalc();};
+    row.append(sel,chk,del); box.appendChild(row);
+  });
+}
+const clip=(x,lo=0,hi=1)=>Math.max(lo,Math.min(hi,x));
+function num(id){return parseFloat(document.getElementById(id).value);}
+function val(id){return document.getElementById(id).value;}
+
+function recalc(){
+  document.getElementById('l_sim').textContent=num('sim')+'%';
+  document.getElementById('l_had').textContent=num('had')+'%';
+  document.getElementById('l_cic').textContent=num('cic')<0?'—':num('cic')+'%';
+
+  const consent=document.getElementById('consent').checked;
+  const cand=document.getElementById('cand');
+  if(!consent){
+    setScore(0,'#888'); document.getElementById('band').textContent='DITOLAK PROSES';
+    document.getElementById('reco').style.background='#fdecea'; document.getElementById('reco').style.color='#7d241a';
+    document.getElementById('reco').textContent='Tidak ada persetujuan (consent). Wajib sesuai UU PDP sebelum skrining.';
+    document.getElementById('factors').innerHTML=''; document.getElementById('advout').innerHTML='';
+    ['b1','b2','b3','b4'].forEach(b=>document.getElementById(b).style.width='0%');
+    document.getElementById('confpill').textContent='—';
+    document.getElementById('warn').style.display='none';
+    return;
+  }
+  let comp=[], rincian=[];
+  // P1
+  let p1=0;
+  {let v=clip(num('sim')/100)*18;p1+=v;rincian.push(['Simpanan wajib tepat waktu',v,18]);comp.push(1);}
+  if(num('cic')>=0){let v=clip(num('cic')/100)*15;p1+=v;rincian.push(['Riwayat cicilan tepat waktu',v,15]);comp.push(1);}
+  else{rincian.push(['Riwayat cicilan (anggota baru)',0,15]);comp.push(0);}
+  {let v=clip(num('ten')/24)*6;p1+=v;rincian.push(['Lama keanggotaan',v,6]);comp.push(num('ten')>0?1:0);}
+  {let v=clip(num('had')/100)*6;p1+=v;rincian.push(['Kehadiran pertemuan',v,6]);comp.push(1);}
+  // P2
+  let p2=0, inc=num('inc'), deb=num('deb');
+  if(inc>0){let dsr=deb/inc;let v=clip((0.70-dsr)/(0.70-0.30))*18;p2+=v;rincian.push([`Rasio cicilan/penghasilan (DSR ${Math.round(dsr*100)}%)`,v,18]);comp.push(1);}
+  else{rincian.push(['Kapasitas bayar (data kosong)',0,18]);comp.push(0);}
+  let stab={tetap:7,musiman:4,tidak_tetap:2}[val('stab')];p2+=stab;rincian.push([`Stabilitas penghasilan (${val('stab')})`,stab,7]);
+  if(val('ver')==='1'){p2+=5;rincian.push(['Kapasitas terverifikasi',5,5]);comp.push(1);}
+  else{rincian.push(['Kapasitas BELUM diverifikasi',0,5]);comp.push(0);}
+  // P3
+  let p3=0, vouch={ya:10,ragu:4,tidak:0}[val('vouch')];p3+=vouch;rincian.push([`Jaminan ketua grup (${val('vouch')})`,vouch,10]);
+  {let gs=Math.max(num('gs'),1);let v=clip(num('know')/gs)*8;p3+=v;rincian.push(['Anggota grup kenal >1 thn',v,8]);comp.push(1);}
+  let rep={baik:7,cukup:4,kurang:1}[val('rep')];p3+=rep;rincian.push([`Reputasi komunitas (${val('rep')})`,rep,7]);
+
+  let base=p1+p2+p3;
+  // Adverse gate
+  let pengurang=0, openFlag=false, verSerious=false, advCards=[];
+  flags.forEach(f=>{
+    let ded=DED[f.type]||8; openFlag=true;
+    if(f.verified){pengurang+=ded; if(ded>=20)verSerious=true;
+      advCards.push(`<div class="flagcard ver"><div class="h"><span>⛔ ${f.type}</span><span>-${ded}</span></div>TERVERIFIKASI · memicu tinjau manual.</div>`);}
+    else{advCards.push(`<div class="flagcard"><div class="h"><span>⚠️ ${f.type}</span><span>0</span></div>PERLU VERIFIKASI · tidak memotong skor (hindari false-positive), tapi wajib dicek.</div>`);}
+  });
+  let skor=Math.round(clip((base-pengurang)/100)*100);
+  let conf=comp.length?Math.round(comp.reduce((a,b)=>a+b,0)/comp.length*100):0;
+
+  let band,color,reco;
+  if(verSerious||skor<50){band='MERAH — Risiko Tinggi';color='var(--red)';reco='Tinjau manual mendalam. Jangan cairkan tanpa verifikasi & mitigasi (penjamin / plafon kecil).';}
+  else if(openFlag||skor<70){band='KUNING — Perlu Tinjau';color='var(--amber)';reco='Boleh lanjut DENGAN SYARAT: verifikasi flag, tambah penjamin, sesuaikan plafon/tenor, atau mulai pinjaman kecil.';}
+  else{band='HIJAU — Risiko Rendah';color='var(--green)';reco='Layak dilanjutkan ke musyawarah grup untuk persetujuan.';}
+  let warnEl=document.getElementById('warn');
+  if(conf<50){warnEl.style.display='block';warnEl.textContent='⚠️ Data belum lengkap (confidence rendah) — kumpulkan bukti tambahan sebelum memutuskan.';}
+  else warnEl.style.display='none';
+
+  // render
+  setScore(skor,color);
+  document.getElementById('band').textContent=band;
+  const cp=document.getElementById('confpill'); cp.textContent='confidence '+conf+'%';
+  cp.style.background=conf>=70?'var(--green)':(conf>=50?'var(--amber)':'#b0392b');
+  document.getElementById('v1').textContent=p1.toFixed(1)+'/45';
+  document.getElementById('v2').textContent=p2.toFixed(1)+'/30';
+  document.getElementById('v3').textContent=p3.toFixed(1)+'/25';
+  document.getElementById('v4').textContent='-'+pengurang.toFixed(0);
+  document.getElementById('b1').style.width=(p1/45*100)+'%';
+  document.getElementById('b2').style.width=(p2/30*100)+'%';
+  document.getElementById('b3').style.width=(p3/25*100)+'%';
+  document.getElementById('b4').style.width=clip(pengurang/50)*100+'%';
+  document.getElementById('advout').innerHTML=advCards.join('')||'';
+  document.getElementById('factors').innerHTML=rincian.map(r=>`<div class="factor"><span>${r[0]}</span><span class="p">${(+r[1]).toFixed(1)} / ${r[2]}</span></div>`).join('');
+  const rr=document.getElementById('reco'); rr.textContent=reco;
+  rr.style.background=color==='var(--green)'?'#e7f4e4':(color==='var(--amber)'?'#fdefe1':'#fdecea');
+  rr.style.color=color==='var(--green)'?'#2c4a17':(color==='var(--amber)'?'#8a480d':'#7d241a');
+}
+function setScore(s,color){const el=document.getElementById('score');el.style.background=color;el.querySelector('b').textContent=s;}
+
+function preset(which){
+  const S=(id,v)=>document.getElementById(id).value=v;
+  if(which==='sri'){document.getElementById('cand').textContent='Bu Sri — penabung disiplin, referensi kuat';
+    S('sim',98);S('cic',97);S('ten',30);S('had',95);S('inc',3500000);S('deb',700000);S('stab','tetap');S('ver','1');S('vouch','ya');S('rep','baik');S('know',7);S('gs',8);flags=[];}
+  else if(which==='x'){document.getElementById('cand').textContent='Pak X — terlihat baik di masyarakat, TAPI ada tunggakan tersembunyi';
+    S('sim',90);S('cic',-1);S('ten',6);S('had',80);S('inc',4000000);S('deb',1800000);S('stab','musiman');S('ver','0');S('vouch','ya');S('rep','baik');S('know',6);S('gs',8);
+    flags=[{type:'Tunggakan tersembunyi',verified:true}];}
+  else if(which==='y'){document.getElementById('cand').textContent='Bu Y — ada flag belum terverifikasi (nama mirip)';
+    S('sim',85);S('cic',90);S('ten',18);S('had',70);S('inc',3000000);S('deb',900000);S('stab','tetap');S('ver','1');S('vouch','ragu');S('rep','cukup');S('know',4);S('gs',8);
+    flags=[{type:'Berita negatif keuangan',verified:false}];}
+  else{document.getElementById('cand').textContent='Kandidat baru (isi manual)';
+    S('sim',50);S('cic',-1);S('ten',0);S('had',50);S('inc',3000000);S('deb',900000);S('stab','tidak_tetap');S('ver','0');S('vouch','ragu');S('rep','cukup');S('know',0);S('gs',8);flags=[];}
+  document.getElementById('consent').checked=true;
+  renderFlags(); recalc();
+}
+preset('x');
+</script>
+</body>
+</html>

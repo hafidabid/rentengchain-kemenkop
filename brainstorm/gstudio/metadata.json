@@ -1,0 +1,6 @@
+{
+  "name": "RantaiRenteng",
+  "description": "Koperasi digital dengan sistem tanggung renteng (joint liability) dan asisten skrining risiko AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

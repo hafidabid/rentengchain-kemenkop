@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RantaiRenteng — Flow Aplikasi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+  :root{
+    --navy:#1F3864; --blue:#2E5496; --teal:#2F6B6B; --amber:#C55A11;
+    --green:#548235; --red:#C0392B; --bg:#f4f6fa; --card:#ffffff;
+    --line:#dfe4ee; --ink:#1d2433; --muted:#5b6b86;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:#1d2433;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px}
+  header.hero{background:linear-gradient(135deg,var(--navy),var(--teal));color:#fff;border-radius:16px;
+    padding:22px 20px;margin-bottom:16px;box-shadow:0 6px 20px rgba(31,56,100,.25)}
+  header.hero h1{font-size:1.5rem;letter-spacing:.3px}
+  header.hero .tag{display:inline-block;background:rgba(255,255,255,.16);padding:3px 10px;border-radius:20px;
+    font-size:.72rem;margin-bottom:8px;font-weight:600}
+  header.hero p{opacity:.92;font-size:.9rem;margin-top:6px}
+  nav.tabs{display:flex;gap:6px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:var(--bg);
+    padding:8px 0;margin-bottom:8px}
+  nav.tabs button{flex:1 1 auto;min-width:120px;border:1px solid var(--line);background:#fff;color:var(--navy);
+    padding:10px 8px;border-radius:10px;font-weight:700;font-size:.82rem;cursor:pointer;transition:.15s}
+  nav.tabs button.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .panel{display:none;animation:fade .25s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .section-title{font-size:1.05rem;color:var(--navy);font-weight:800;margin:18px 2px 8px;
+    display:flex;align-items:center;gap:8px}
+  .section-title .n{background:var(--amber);color:#fff;width:24px;height:24px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;flex:0 0 auto}
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0 14px;
+    overflow-x:auto}
+  .mermaid{min-width:520px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:.72rem;color:#5b6b86;margin:6px 2px 0}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .steps{display:grid;gap:8px}
+  .step{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:10px;
+    overflow:hidden}
+  .step summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;
+    font-weight:700;color:var(--navy);font-size:.92rem}
+  .step summary::-webkit-details-marker{display:none}
+  .step .badge{background:var(--blue);color:#fff;border-radius:6px;font-size:.7rem;padding:2px 7px;flex:0 0 auto;
+    margin-top:1px}
+  .step[open] summary{border-bottom:1px solid var(--line)}
+  .step .body{padding:12px 14px;font-size:.86rem;color:#39435a}
+  .step .body ul{margin:6px 0 0 18px}
+  .step .body li{margin:3px 0}
+  .step .meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .chip{font-size:.7rem;padding:3px 8px;border-radius:20px;background:#eef2f8;color:#2E5496;font-weight:600}
+  .chip.sys{background:#e7f1ee;color:#2F6B6B}
+  .chip.chain{background:#f3ecfa;color:#7030A0}
+  .step.teal{border-left-color:var(--teal)} .step.teal .badge{background:var(--teal)}
+  .step.amber{border-left-color:var(--amber)} .step.amber .badge{background:var(--amber)}
+  .scenario{border-radius:14px;padding:14px;margin:10px 0;border:1px solid var(--line);background:#fff}
+  .scenario h4{font-size:.98rem;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .scenario.pos{border-left:5px solid var(--green)}
+  .scenario.warn{border-left:5px solid var(--amber)}
+  .scenario.bad{border-left:5px solid var(--red)}
+  .scenario.care{border-left:5px solid var(--teal)}
+  .scenario .tl{margin:8px 0 0;padding:0;list-style:none;counter-reset:s}
+  .scenario .tl li{position:relative;padding:6px 0 6px 30px;font-size:.85rem;color:#39435a;border-left:2px dashed #d6deea;margin-left:8px}
+  .scenario .tl li:before{counter-increment:s;content:counter(s);position:absolute;left:-13px;top:6px;
+    width:24px;height:24px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-size:.72rem;font-weight:700}
+  .scenario.pos .tl li:before{background:var(--green)}
+  .scenario.warn .tl li:before{background:var(--amber)}
+  .scenario.bad .tl li:before{background:var(--red)}
+  .scenario.care .tl li:before{background:var(--teal)}
+  .pill{display:inline-block;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:6px}
+  .pill.g{background:#e7f4e4;color:#3d6b1f}.pill.r{background:#fbe6e3;color:#a5271b}
+  .pill.a{background:#fdefe1;color:#a8480d}.pill.b{background:#e7eefb;color:#274a86}
+  .note{background:#fff8ec;border:1px solid #f2dcae;border-radius:10px;padding:11px 13px;font-size:.82rem;
+    color:#6b4e1a;margin:10px 0}
+  footer{text-align:center;color:#8290a8;font-size:.74rem;margin:22px 0 10px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:6px 0 2px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .kpi b{display:block;color:var(--navy);font-size:1.05rem}
+  .kpi span{font-size:.72rem;color:#6a7793}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="tag">RANTAIRENTENG · FLOW APLIKASI</span>
+    <h1>Alur Aplikasi Koperasi Digital Tanggung Renteng</h1>
+    <p>Frontend anggota (web, mobile-friendly) + panel pengurus. Level UX/bisnis dengan sentuhan teknis (escrow smart-contract, status PAID/UNPAID, AI early-warning). Ketuk tiap langkah untuk detail.</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="active" data-tab="user">👤 Alur Anggota</button>
+    <button data-tab="admin">🛠️ Alur Pengurus</button>
+    <button data-tab="cases">⚖️ Skenario Kasus</button>
+  </nav>
+
+  <!-- ============ USER ============ -->
+  <section class="panel active" id="user">
+    <div class="section-title"><span class="n">A</span> Peta Alur Anggota (end-to-end)</div>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TD
+  A["1. Daftar + e-KYC"] --> B["2. Verifikasi Pengurus"]
+  B --> C["3. Akun Aktif + Dashboard"]
+  C --> D["4. Simpanan Pokok & Wajib (QRIS)"]
+  D --> E["5. Buat / Gabung Grup TR (5-10 org)"]
+  E --> F["6. Ajukan Pinjaman"]
+  F --> G{"7. AI Early-Warning + Musyawarah Grup"}
+  G -->|Disetujui| H["8. Escrow Smart-Contract cair bertahap"]
+  G -->|Ditinjau/Tolak| F
+  H --> I["9. Cicilan Bulanan (QRIS)"]
+  I --> J{"10. Bayar tepat waktu?"}
+  J -->|Ya| K["✔ Ledger PAID · Skor naik · Escrow rilis"]
+  J -->|Telat/Tidak| L["→ Alur Penanganan (tab Skenario)"]
+  K --> I
+  classDef ok fill:#e7f4e4,stroke:#548235,color:#2c4a17;
+  classDef risk fill:#fbe6e3,stroke:#C0392B,color:#7d241a;
+  class K ok; class L risk;
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:#2E5496"></i>langkah aksi</span>
+        <span><i class="dot" style="background:#C55A11"></i>keputusan</span>
+        <span><i class="dot" style="background:#548235"></i>hasil positif</span>
+        <span><i class="dot" style="background:#C0392B"></i>masuk penanganan</span>
+      </div>
+    </div>
+
+    <div class="section-title"><span class="n">B</span> Rincian Tiap Langkah</div>
+    <div class="steps">
+      <details class="step" open>
+        <summary><span class="badge">1</span> Daftar + e-KYC</summary>
+        <div class="body">
+          Anggota buka web di HP, isi data diri, unggah/foto KTP, dan swafoto. Sistem menjalankan e-KYC instan (cek NIK & liveness).
+          <ul>
+            <li>Input: nama, NIK, no. HP (OTP), alamat/desa, pekerjaan, jenis simpanan.</li>
+            <li>Pilih peran: <b>penabung</b>, <b>peminjam</b>, atau keduanya.</li>
+            <li>Sistem membuat wallet custodial otomatis (anggota tak perlu paham blockchain / gas fee).</li>
+          </ul>
+          <div class="meta"><span class="chip">UX: form bertahap</span><span class="chip sys">Sistem: e-KYC + OTP</span><span class="chip chain">Chain: buat wallet custodial</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">2</span> Verifikasi Pengurus</summary>
+        <div class="body">
+          Pengajuan masuk ke panel pengurus. Status keanggotaan: <span class="pill b">Requested → Approved</span>. Pengurus mencocokkan data & menyetujui.
+          <div class="meta"><span class="chip">Status: Requested/Approved</span><span class="chip sys">Notifikasi ke anggota</span></div>
+        </div>
+      </details>
+      <details class="step teal">
+        <summary><span class="badge">3</span> Akun Aktif + Cek Profil</summary>
+        <div class="body">
+          Dashboard anggota menampilkan: saldo simpanan (pokok/wajib/sukarela), pinjaman berjalan & sisa, jadwal cicilan berikutnya, skor keanggotaan, dan status grup tanggung renteng.
+          <ul><li>Semua angka ditarik real-time dari ledger — transparan, tak bisa diubah pengurus sepihak.</li>
+          <li>Menu: Simpan, Pinjam, Grup, Riwayat, Bantuan.</li></ul>
+          <div class="meta"><span class="chip">Cek profil</span><span class="chip chain">Ledger transparan</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">4</span> Simpan (Pokok, Wajib, Sukarela)</summary>
+        <div class="body">
+          Anggota menyetor via <b>QRIS/transfer</b>. Simpanan pokok (sekali), wajib (bulanan), sukarela (kapan saja).
+          <ul>
+            <li>Pembayaran otomatis tercatat → status <span class="pill g">PAID</span> pada periode terkait.</li>
+            <li>Pengingat simpanan wajib bulanan (push/WA) — menekan rasio UNPAID.</li>
+          </ul>
+          <div class="meta"><span class="chip">QRIS</span><span class="chip sys">Reminder otomatis</span><span class="chip chain">Catat ke ledger</span></div>
+        </div>
+      </details>
+      <details class="step amber">
+        <summary><span class="badge">5</span> Buat / Gabung Grup Tanggung Renteng</summary>
+        <div class="body">
+          Anggota membentuk kelompok <b>5–10 orang</b> berbasis ikatan sosial nyata (satu RT/desa/paguyuban) — fondasi rasa sungkan & saling menjamin.
+          <ul>
+            <li>Buat grup → undang anggota (link/QR) → semua setuju "pakta tanggung renteng".</li>
+            <li>Atau gabung grup yang dibuka pengurus/ketua kelompok.</li>
+            <li>Grup wajib punya jadwal pertemuan bulanan (didorong aplikasi).</li>
+          </ul>
+          <div class="meta"><span class="chip">Grup 5-10</span><span class="chip">Pakta joint-liability</span><span class="chip sys">Jadwal pertemuan</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">6</span> Ajukan Pinjaman</summary>
+        <div class="body">
+          Peminjam mengisi nominal, tujuan, tenor. Pinjaman diikat ke grup (bukan individu murni).
+          <div class="meta"><span class="chip">Nominal/tenor</span><span class="chip">Terikat grup</span></div>
+        </div>
+      </details>
+      <details class="step amber">
+        <summary><span class="badge">7</span> AI Early-Warning + Musyawarah Grup</summary>
+        <div class="body">
+          AI memberi <b>skor kelayakan</b> & <b>flag risiko</b> (mis. riwayat telat, adverse media) sebagai <u>peringatan untuk ditinjau</u> — <b>bukan vonis otomatis</b>. Keputusan akhir di musyawarah grup + pengurus. Anggota punya hak sanggah.
+          <ul>
+            <li>Hijau → lanjut; Kuning → syarat tambahan/penjamin; Merah → tinjau manual/tolak sementara.</li>
+          </ul>
+          <div class="note">Prinsip: AI = asisten & alarm dini, keputusan tetap manusiawi. Menghindari bias & false-positive (nama sama/hoaks).</div>
+          <div class="meta"><span class="chip sys">AI skor + flag</span><span class="chip">Musyawarah grup</span><span class="chip">Hak sanggah</span></div>
+        </div>
+      </details>
+      <details class="step teal">
+        <summary><span class="badge">8</span> Escrow Smart-Contract Cair Bertahap</summary>
+        <div class="body">
+          Dana cair otomatis oleh smart contract setelah syarat terpenuhi. Pencairan <b>bertahap per kelompok</b>; sebagian dana/tahap berikutnya <b>ditahan di escrow</b> sebagai jaminan kolektif.
+          <div class="meta"><span class="chip chain">Escrow EVM</span><span class="chip chain">Pencairan bertahap</span><span class="chip">Bebas gas (relayer)</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">9</span> Cicilan Bulanan</summary>
+        <div class="body">
+          Tiap bulan aplikasi mengingatkan H-3 & H-0. Anggota bayar via QRIS. Status periode → <span class="pill g">PAID</span> / <span class="pill r">UNPAID</span> tercatat di ledger.
+          <div class="meta"><span class="chip sys">Reminder H-3/H-0</span><span class="chip">QRIS</span><span class="chip chain">PAID/UNPAID</span></div>
+        </div>
+      </details>
+      <details class="step teal">
+        <summary><span class="badge">10</span> Evaluasi Pembayaran</summary>
+        <div class="body">
+          Jika tepat waktu → skor naik, riwayat baik, escrow tahap berikut dirilis. Jika telat/tidak → masuk alur penanganan (lihat tab <b>Skenario Kasus</b>).
+          <div class="meta"><span class="chip">Skor naik</span><span class="chip chain">Escrow rilis</span></div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section class="panel" id="admin">
+    <div class="section-title"><span class="n">A</span> Peta Alur Pengurus (Admin Panel)</div>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TD
+  A["Login Pengurus (peran & hak akses)"] --> B["Dashboard EWS"]
+  B --> C["Verifikasi Anggota / e-KYC"]
+  B --> D["Kelola Grup Tanggung Renteng"]
+  B --> E["Review & Setujui Pinjaman"]
+  B --> F["Monitoring Cicilan + Rasio UNPAID/Dormansi"]
+  F --> G{"Ada tunggakan?"}
+  G -->|Ya| H["Alur Penagihan: Reminder → TR → Restrukturisasi"]
+  G -->|Tidak| I["Rekonsiliasi otomatis (QRIS↔ledger)"]
+  B --> J["e-RAT & Laporan Transparan ke Anggota"]
+  B --> K["Ajukan Pembiayaan ke LPDB / HIMBARA"]
+  classDef risk fill:#fbe6e3,stroke:#C0392B,color:#7d241a;
+  class H risk;
+      </div>
+    </div>
+
+    <div class="section-title"><span class="n">B</span> Rincian Fungsi Pengurus</div>
+    <div class="steps">
+      <details class="step" open>
+        <summary><span class="badge">1</span> Login & Hak Akses Berperan</summary>
+        <div class="body">
+          Peran: <b>Ketua</b>, <b>Bendahara</b>, <b>Admin</b>, (opsional <b>Pengawas</b>). Setiap aksi sensitif tercatat di audit log immutable — mengunci celah manipulasi.
+          <div class="note">Temuan data KDMP: ~100% koperasi tercatat <b>tanpa pengawas</b>. Aplikasi menyediakan peran Pengawas + kontrol berbasis kode agar tak bergantung orang.</div>
+          <div class="meta"><span class="chip">RBAC</span><span class="chip chain">Audit log immutable</span></div>
+        </div>
+      </details>
+      <details class="step teal">
+        <summary><span class="badge">2</span> Dashboard Early-Warning (EWS)</summary>
+        <div class="body">
+          Ringkasan kesehatan koperasi real-time:
+          <div class="kpis">
+            <div class="kpi"><b>% UNPAID</b><span>disiplin bayar</span></div>
+            <div class="kpi"><b>% Dorman</b><span>aktivasi usaha</span></div>
+            <div class="kpi"><b>Adopsi akun</b><span>onboarding</span></div>
+            <div class="kpi"><b>Status RAT</b><span>tata kelola</span></div>
+          </div>
+          Kartu peringatan menandai grup/anggota berisiko lebih dini.
+          <div class="meta"><span class="chip sys">EWS real-time</span><span class="chip">Drill-down per grup</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">3</span> Verifikasi Anggota (e-KYC)</summary>
+        <div class="body">
+          Antrean pendaftar → cek data & KTP → <span class="pill b">Approve</span>/<span class="pill r">Reject</span> dengan alasan. Bulk-approve untuk onboarding massal.
+          <div class="meta"><span class="chip">Antrean KYC</span><span class="chip sys">Bulk approve</span></div>
+        </div>
+      </details>
+      <details class="step amber">
+        <summary><span class="badge">4</span> Kelola Grup Tanggung Renteng</summary>
+        <div class="body">
+          Bentuk/rombak grup, tetapkan ketua kelompok, atur plafon grup & jadwal pertemuan, pantau kohesi & rekam kehadiran.
+          <div class="meta"><span class="chip">Plafon grup</span><span class="chip">Ketua kelompok</span><span class="chip sys">Rekam kehadiran</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">5</span> Review & Setujui Pinjaman</summary>
+        <div class="body">
+          Lihat skor AI + flag + rekomendasi grup. Setujui / minta syarat / tolak. Persetujuan memicu escrow smart-contract (bukan transfer manual) → mengurangi favoritisme.
+          <div class="meta"><span class="chip sys">Skor AI</span><span class="chip chain">Trigger escrow</span></div>
+        </div>
+      </details>
+      <details class="step amber">
+        <summary><span class="badge">6</span> Monitoring Cicilan & Penagihan</summary>
+        <div class="body">
+          Pantau jatuh tempo & tunggakan per grup. Sistem otomatis menjalankan tangga penagihan: Reminder → aktifkan Tanggung Renteng → musyawarah → restrukturisasi → sanksi. Pengurus dapat menandai kasus <b>uzur</b> (sakit/musibah) untuk jalur empati.
+          <div class="meta"><span class="chip sys">Tangga penagihan</span><span class="chip">Tandai uzur</span><span class="chip">Restrukturisasi</span></div>
+        </div>
+      </details>
+      <details class="step teal">
+        <summary><span class="badge">7</span> Rekonsiliasi Otomatis</summary>
+        <div class="body">
+          Pembayaran QRIS dicocokkan otomatis dengan ledger — tak ada pencatatan manual, kas tak bocor.
+          <div class="meta"><span class="chip chain">QRIS ↔ ledger</span><span class="chip">Anti kebocoran</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">8</span> e-RAT & Transparansi</summary>
+        <div class="body">
+          Susun laporan keuangan & RAT digital; publikasikan ringkasan ke anggota (asas keterbukaan). Membantu naikkan kepatuhan RAT (temuan: hanya ~33% patuh).
+          <div class="meta"><span class="chip">e-RAT</span><span class="chip">Laporan ke anggota</span></div>
+        </div>
+      </details>
+      <details class="step">
+        <summary><span class="badge">9</span> Ajukan Pembiayaan (LPDB / HIMBARA)</summary>
+        <div class="body">
+          Rakit berkas & ajukan pembiayaan ke LPDB/HIMBARA (skema 6%, PMK 49/2025). Sistem bantu lengkapi syarat agar lolos verifikasi (temuan: dari Rp105 M diminta, hanya ~2,8% cair).
+          <div class="meta"><span class="chip">LPDB/HIMBARA</span><span class="chip sys">Checklist syarat</span></div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ CASES ============ -->
+  <section class="panel" id="cases">
+    <div class="section-title"><span class="n">A</span> Alur Penanganan Pembayaran (inti tanggung renteng)</div>
+    <div class="diagram">
+      <div class="mermaid">
+flowchart TD
+  L["Cicilan jatuh tempo belum terbayar"] --> M{"Masa tenggang 3-5 hari + reminder"}
+  M -->|Bayar| N["✔ Selesai · PAID"]
+  M -->|Belum| O{"Alasan anggota?"}
+  O -->|Uzur: sakit/musibah| P["Jalur Empati: dana sosial / jadwal ulang · tanpa penalti"]
+  O -->|Tanpa kabar / mampu| Q["Aktifkan Tanggung Renteng: grup menalangi"]
+  Q --> R["Grup tetap lancar · escrow tetap rilis"]
+  R --> S["Anggota wajib ganti ke grup · skor turun"]
+  Q -->|Mangkir berulang| T["Musyawarah → Restrukturisasi → Sanksi"]
+  P --> N
+  classDef ok fill:#e7f4e4,stroke:#548235,color:#2c4a17;
+  classDef care fill:#e7f1ee,stroke:#2F6B6B,color:#1f4a4a;
+  classDef bad fill:#fbe6e3,stroke:#C0392B,color:#7d241a;
+  class N ok; class P care; class T bad;
+      </div>
+    </div>
+
+    <div class="section-title"><span class="n">B</span> Skenario Konkret</div>
+
+    <div class="scenario pos">
+      <h4>✅ Kasus Positif — Bu Sri bayar tepat waktu</h4>
+      <p style="font-size:.85rem;color:#41506a">Anggota disiplin; ini kondisi yang produk dorong jadi kebiasaan.</p>
+      <ul class="tl">
+        <li>H-3: aplikasi ingatkan cicilan Rp250.000 via WA & push.</li>
+        <li>H-0 pagi: Bu Sri bayar lewat QRIS dalam 30 detik.</li>
+        <li>Ledger mencatat <span class="pill g">PAID</span> otomatis; bendahara tak perlu input manual.</li>
+        <li>Skor keanggotaan naik; escrow tahap berikutnya untuk grup dirilis.</li>
+        <li>Grup melihat semua anggota "hijau" → kepercayaan & sungkan positif menguat.</li>
+      </ul>
+    </div>
+
+    <div class="scenario care">
+      <h4>🤝 Kasus Uzur — Pak Deni telat karena sakit</h4>
+      <p style="font-size:.85rem;color:#41506a">Telat sesekali dengan alasan sah harus dibedakan dari mangkir. Jaga asas kekeluargaan.</p>
+      <ul class="tl">
+        <li>Cicilan lewat jatuh tempo; masa tenggang 3–5 hari berjalan.</li>
+        <li>Pak Deni ajukan "izin uzur" di aplikasi + unggah bukti (mis. surat sakit) — opsional.</li>
+        <li>Ketua kelompok/pengurus verifikasi & tandai kasus <span class="pill" style="background:#e7f1ee;color:#2F6B6B">UZUR</span>.</li>
+        <li>Opsi otomatis: (a) <b>dana sosial grup</b> menalangi sementara, atau (b) <b>penjadwalan ulang</b> 1 periode tanpa penalti & tanpa turunkan skor.</li>
+        <li>Setelah pulih, Pak Deni melunasi; catatan tetap bersih. Empati terekam → loyalitas naik.</li>
+      </ul>
+      <div class="note">Guardrail: kuota "izin uzur" dibatasi (mis. maks 2×/tahun) & butuh verifikasi agar tak disalahgunakan.</div>
+    </div>
+
+    <div class="scenario warn">
+      <h4>⚠️ Kasus Telat Tanpa Kabar — Tanggung Renteng aktif</h4>
+      <p style="font-size:.85rem;color:#41506a">Anggota mampu tapi lalai; mekanisme inti bekerja.</p>
+      <ul class="tl">
+        <li>Masa tenggang habis, tak ada pembayaran/izin.</li>
+        <li>Sistem aktifkan <b>Tanggung Renteng</b>: kewajiban ditalangi kas/iuran grup → grup tetap <span class="pill g">lancar</span>, escrow tetap rilis (tak menghukum anggota lain).</li>
+        <li>Anggota bersangkutan wajib mengganti talangan ke grup + skor <span class="pill r">turun</span>.</li>
+        <li>Peer-pressure: notifikasi ke grup memicu "penagihan sosial" (sungkan) tanpa debt collector.</li>
+        <li>Jika lunas dalam periode → status pulih; jika tidak → eskalasi.</li>
+      </ul>
+    </div>
+
+    <div class="scenario bad">
+      <h4>⛔ Kasus Mangkir Berulang — Eskalasi & Sanksi</h4>
+      <p style="font-size:.85rem;color:#41506a">Gagal bayar berkepanjangan tanpa alasan sah.</p>
+      <ul class="tl">
+        <li>Escrow <b>menahan</b> pencairan pinjaman baru untuk anggota (dan menahan hak grup terkait) → tekanan kolektif.</li>
+        <li>Musyawarah grup + pengurus dijadwalkan lewat aplikasi.</li>
+        <li><b>Restrukturisasi</b>: perpanjang tenor / kecilkan cicilan / konversi ke simpanan jaminan.</li>
+        <li>Jika tetap gagal: <b>sanksi</b> — skor merah, hak pinjam ditangguhkan, jaminan sosial/agunan (bila ada) dieksekusi sesuai AD/ART.</li>
+        <li>Semua langkah tercatat immutable → adil, tanpa pandang bulu, bisa diaudit.</li>
+      </ul>
+    </div>
+
+    <div class="note">Catatan desain: batas hari tenggang, kuota uzur, besaran dana sosial, dan aturan sanksi adalah parameter yang diatur per koperasi (AD/ART) di panel pengurus — aplikasi hanya mengeksekusi aturan secara konsisten & transparan.</div>
+  </section>
+
+  <footer>RantaiRenteng · Flow aplikasi (draf desain) · dibuat 10 Juli 2026 · level UX/bisnis + teknis ringkas</footer>
+</div>
+
+<script>
+  mermaid.initialize({startOnLoad:true, theme:'base', themeVariables:{
+    primaryColor:'#eaf0fa', primaryBorderColor:'#2E5496', primaryTextColor:'#1d2433',
+    lineColor:'#8aa0c4', fontSize:'13px', fontFamily:'inherit'
+  }});
+  const tabs=document.querySelectorAll('nav.tabs button');
+  const panels=document.querySelectorAll('.panel');
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    panels.forEach(p=>p.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }));
+</script>
+</body>
+</html>
