@@ -4,3 +4,23 @@
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Foundry — compiler artifacts and build cache
+foundry/cache/
+foundry/out/
+
+# Foundry — dependencies (reinstall with `forge install`)
+foundry/lib/
+
+# Foundry — deployment broadcast logs (keep run-latest if you want history)
+foundry/broadcast/
+
+# Environment secrets
+.env
+.env.local
+foundry/.env
+
+# Gas snapshots / coverage
+foundry/.gas-snapshot
+lcov.info
+coverage/
