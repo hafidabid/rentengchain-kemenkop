@@ -1,0 +1,7 @@
+{
+  "database": "beads.db",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rentengchain_kemenkop",
+  "project_id": "3413c17b-f21e-4e91-a0a5-db5047138361"
+}
