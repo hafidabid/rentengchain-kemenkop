@@ -24,5 +24,5 @@
 ## 5. Quality gates
 
 - [x] 5.1 `npm run build` and `npm run lint` pass
-- [ ] 5.2 Integration smoke against Base Sepolia: relayer submits one no-op/idempotent tx (e.g. registerMember for a throwaway hash) and gets a real `txHash` resolving on the explorer
+- [x] 5.2 Integration smoke against Base Sepolia: relayer submits one no-op/idempotent tx (e.g. registerMember for a throwaway hash) and gets a real `txHash` resolving on the explorer
 - [x] 5.3 Document relayer funding + env setup in `backend/src/web3/README.md`
