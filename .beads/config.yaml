@@ -66,3 +66,9 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync.remote: "git+https://github.com/hafidabid/rentengchain-kemenkop.git"
+repos:
+  primary: "."
+  additional:
+    - "/Users/hafidabi/hackathon/rentengchain-kemenkop/.beads"
+
+export.auto: true
