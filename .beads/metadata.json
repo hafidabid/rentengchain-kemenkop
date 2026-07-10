@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rentengchain_kemenkop",
+  "project_id": "fe115101-fb37-4bee-9e1c-3028078f1178"
+}
