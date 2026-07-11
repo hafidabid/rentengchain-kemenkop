@@ -25,6 +25,7 @@ log "Rebuilding images"
 VITE_API_URL="https://$API_DOMAIN" $COMPOSE build
 
 log "Recreating containers"
+VITE_DEMO_GROUP_ID=e5f6a7b8-9c0d-41e2-8a4b-5c6d7e8f9a0b
 VITE_API_URL="https://$API_DOMAIN" $COMPOSE up -d
 
 log "Waiting for backend health"
