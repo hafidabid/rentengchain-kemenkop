@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Landmark, LogIn, ShieldCheck, Loader2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Landmark, LogIn, ShieldCheck, Loader2, UserPlus } from 'lucide-react';
 import { useAuth } from '../lib/auth';
 import { ApiError } from '../lib/api';
 
@@ -128,6 +128,15 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        {/* Onboarding link */}
+        <Link
+          to="/daftar"
+          className="mt-4 w-full bg-white hover:bg-[#F6F5F3] border border-[#E4E4E4] text-[#1E1F21] font-bold text-sm py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+        >
+          <UserPlus className="w-4 h-4 text-[#F06A6A]" /> Daftar sebagai anggota
+          baru
+        </Link>
 
         {/* Demo credential helper */}
         <div className="bg-white mt-4 p-4 rounded-2xl border border-[#E4E4E4] space-y-2">

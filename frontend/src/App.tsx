@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
 import AnggotaPage from './pages/AnggotaPage';
 import PengurusPage from './pages/PengurusPage';
 import type { Role } from './types';
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/daftar" element={<OnboardingPage />} />
       <Route
         path="/"
         element={

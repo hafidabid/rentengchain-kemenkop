@@ -174,6 +174,34 @@ export const api = {
       auth: false,
     });
   },
+  /** Upload a KTP image (multipart) during onboarding; returns its stored URL. */
+  async uploadKtp(file: File): Promise<{ ktpUrl: string }> {
+    const form = new FormData();
+    form.append('file', file);
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/api/kyc/upload-ktp`, {
+        method: 'POST',
+        body: form, // browser sets multipart Content-Type + boundary
+      });
+    } catch {
+      throw new ApiError(
+        0,
+        'Tidak dapat terhubung ke server backend untuk mengunggah KTP.',
+      );
+    }
+    const text = await res.text();
+    const data = text ? safeJson(text) : undefined;
+    if (!res.ok) {
+      const message =
+        (data && (data.message || data.error)) || res.statusText || 'Unggah gagal';
+      throw new ApiError(
+        res.status,
+        Array.isArray(message) ? message.join(', ') : String(message),
+      );
+    }
+    return data as { ktpUrl: string };
+  },
   approveKyc(id: string): Promise<Member> {
     return request<Member>(`/kyc/approve/${id}`, { method: 'POST' });
   },
