@@ -50,4 +50,4 @@
 
 - [ ] 8.1 Backend `build` + `lint` green; frontend `build` (tsc + vite) green
 - [ ] 8.2 New unit tests pass; e2e for notes/detail/reporting where practical (Gemini/Redis mocked or degraded)
-- [ ] 8.3 Update `backend/AGENTS.md` / relevant READMEs with the new modules, env, and Redis-optional note
+- [x] 8.3 Update `backend/AGENTS.md` / relevant READMEs with the new modules, env, and Redis-optional note
