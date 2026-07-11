@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
 import {
   BarChart3,
   Users,
@@ -14,30 +14,48 @@ import {
   Loader2,
   RefreshCw,
   HeartHandshake,
-} from "lucide-react";
-import { api, ApiError } from "../lib/api";
-import { formatIdr, shortAddress, formatTimestamp } from "../lib/format";
-import type { AuditLog, Group, Loan, Member, OnchainStatus } from "../types";
-import RiskScreenerTool from "./RiskScreenerTool";
+  KeyRound,
+  Image as ImageIcon,
+  Bot,
+  ChevronRight,
+  Info,
+} from 'lucide-react';
+import { api, ApiError } from '../lib/api';
+import { formatIdr, shortAddress, formatTimestamp } from '../lib/format';
+import type {
+  AuditLog,
+  Group,
+  Loan,
+  Member,
+  OnchainStatus,
+} from '../types';
+import RiskScreenerTool from './RiskScreenerTool';
+import CredentialCard from './CredentialCard';
+import LoanDecisionTimeline from './LoanDecisionTimeline';
+import MemberDetailDrawer from './MemberDetailDrawer';
+import AssistantChat from './AssistantChat';
+import ERatReportPanel from './ERatReport';
+import { InfoTooltip, EwsExplainer, EWS_COPY } from './InfoTooltip';
 
 type Tab =
-  | "dashboard"
-  | "kyc"
-  | "grup"
-  | "pinjaman"
-  | "penagihan"
-  | "laporan"
-  | "screener";
-type Flash = { type: "success" | "error"; msg: string } | null;
+  | 'dashboard'
+  | 'kyc'
+  | 'grup'
+  | 'pinjaman'
+  | 'penagihan'
+  | 'laporan'
+  | 'asisten'
+  | 'screener';
+type Flash = { type: 'success' | 'error'; msg: string } | null;
 
-const flagStyle: Record<Loan["flagAi"], string> = {
-  MERAH: "bg-[#FCE8E6] border-[#F06A6A]/10 text-[#F06A6A]",
-  KUNING: "bg-[#FDF6E2] border-[#F1BD6C]/10 text-[#C55A11]",
-  HIJAU: "bg-[#EDF9F0] border-[#62D26F]/10 text-[#548235]",
+const flagStyle: Record<Loan['flagAi'], string> = {
+  MERAH: 'bg-[#FCE8E6] border-[#F06A6A]/10 text-[#F06A6A]',
+  KUNING: 'bg-[#FDF6E2] border-[#F1BD6C]/10 text-[#C55A11]',
+  HIJAU: 'bg-[#EDF9F0] border-[#62D26F]/10 text-[#548235]',
 };
 
 export default function PengurusView() {
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [members, setMembers] = useState<Member[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -47,6 +65,15 @@ export default function PengurusView() {
   const [flash, setFlash] = useState<Flash>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Admin-tools UI state
+  const [credential, setCredential] = useState<{
+    nik: string;
+    password: string;
+    nama: string;
+  } | null>(null);
+  const [loanNotes, setLoanNotes] = useState<Record<string, string>>({});
+  const [detailMemberId, setDetailMemberId] = useState<string | null>(null);
 
   const notify = useCallback((f: Flash) => {
     setFlash(f);
@@ -62,11 +89,11 @@ export default function PengurusView() {
       api.listAuditLogs(100),
       api.onchainStatus(),
     ]);
-    if (m.status === "fulfilled") setMembers(m.value);
-    if (g.status === "fulfilled") setGroups(g.value);
-    if (l.status === "fulfilled") setLoans(l.value);
-    if (a.status === "fulfilled") setLogs(a.value);
-    if (o.status === "fulfilled") setOnchain(o.value);
+    if (m.status === 'fulfilled') setMembers(m.value);
+    if (g.status === 'fulfilled') setGroups(g.value);
+    if (l.status === 'fulfilled') setLoans(l.value);
+    if (a.status === 'fulfilled') setLogs(a.value);
+    if (o.status === 'fulfilled') setOnchain(o.value);
     setLoading(false);
   }, []);
 
@@ -85,47 +112,84 @@ export default function PengurusView() {
     0,
   );
   const outstanding = loans
-    .filter((l) => l.status === "Cair")
+    .filter((l) => l.status === 'Cair')
     .reduce((s, l) => s + l.cicilanBulanan * l.sisaCicilan, 0);
-  const cairLoans = loans.filter((l) => l.status === "Cair");
+  const cairLoans = loans.filter((l) => l.status === 'Cair');
   const unpaid = cairLoans.filter(
-    (l) => l.statusCicilan === "UNPAID" || l.statusCicilan === "DITALANGI",
+    (l) => l.statusCicilan === 'UNPAID' || l.statusCicilan === 'DITALANGI',
   ).length;
   const nplRate = cairLoans.length
     ? Math.round((unpaid / cairLoans.length) * 100)
     : 0;
   const dormanCount = members.filter((m) => m.isDorman).length;
 
-  const kycQueue = members.filter((m) => m.statusKyc === "Requested");
-  const pendingLoans = loans.filter((l) => l.status === "Diajukan");
+  const kycQueue = members.filter((m) => m.statusKyc === 'Requested');
+  const pendingLoans = loans.filter((l) => l.status === 'Diajukan');
   const arrears = loans.filter(
-    (l) => l.statusCicilan === "UNPAID" || l.statusCicilan === "DITALANGI",
+    (l) => l.statusCicilan === 'UNPAID' || l.statusCicilan === 'DITALANGI',
   );
 
   // --- Flow ①: KYC approve/reject ---
-  const handleKyc = async (id: string, action: "approve" | "reject") => {
+  const handleKyc = async (id: string, action: 'approve' | 'reject') => {
     setBusyId(id);
     try {
-      const updated =
-        action === "approve"
-          ? await api.approveKyc(id)
-          : await api.rejectKyc(id);
-      setMembers((prev) => prev.map((m) => (m.id === id ? updated : m)));
+      if (action === 'approve') {
+        const updated = await api.approveKyc(id);
+        const { tempPassword, ...member } = updated;
+        setMembers((prev) =>
+          prev.map((m) => (m.id === id ? (member as Member) : m)),
+        );
+        if (tempPassword) {
+          setCredential({
+            nik: member.nik,
+            password: tempPassword,
+            nama: member.nama,
+          });
+        }
+        notify({
+          type: 'success',
+          msg: `e-KYC ${member.nama} disetujui. Dompet: ${shortAddress(member.walletAddress)}`,
+        });
+      } else {
+        const updated = await api.rejectKyc(id);
+        setMembers((prev) => prev.map((m) => (m.id === id ? updated : m)));
+        notify({
+          type: 'success',
+          msg: `Pendaftaran ${updated.nama} ditolak.`,
+        });
+      }
       void api
         .listAuditLogs(100)
         .then(setLogs)
         .catch(() => {});
-      notify({
-        type: "success",
-        msg:
-          action === "approve"
-            ? `e-KYC ${updated.nama} disetujui. Dompet: ${shortAddress(updated.walletAddress)}`
-            : `Pendaftaran ${updated.nama} ditolak.`,
-      });
     } catch (err) {
       notify({
-        type: "error",
-        msg: err instanceof ApiError ? err.message : "Aksi KYC gagal.",
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Aksi KYC gagal.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // --- Reset a member's one-time credential ---
+  const handleResetPassword = async (m: Member) => {
+    setBusyId(m.id);
+    try {
+      const { tempPassword } = await api.resetPassword(m.id);
+      setCredential({ nik: m.nik, password: tempPassword, nama: m.nama });
+      notify({
+        type: 'success',
+        msg: `Kata sandi ${m.nama} berhasil direset (sekali tampil).`,
+      });
+      void api
+        .listAuditLogs(100)
+        .then(setLogs)
+        .catch(() => {});
+    } catch (err) {
+      notify({
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Reset sandi gagal.',
       });
     } finally {
       setBusyId(null);
@@ -133,29 +197,32 @@ export default function PengurusView() {
   };
 
   // --- Flow ②: loan approve/reject ---
-  const handleLoan = async (id: string, action: "approve" | "reject") => {
+  const handleLoan = async (id: string, action: 'approve' | 'reject') => {
     setBusyId(id);
     try {
+      const note = loanNotes[id]?.trim() || undefined;
       const updated =
-        action === "approve"
-          ? await api.approveLoan(id)
-          : await api.rejectLoan(id, "Perlu klarifikasi tambahan");
+        action === 'approve'
+          ? await api.approveLoan(id, note)
+          : await api.rejectLoan(id, note ?? 'Perlu klarifikasi tambahan');
       setLoans((prev) => prev.map((l) => (l.id === id ? updated : l)));
-      void api
-        .listAuditLogs(100)
-        .then(setLogs)
-        .catch(() => {});
+      setLoanNotes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      void api.listAuditLogs(100).then(setLogs).catch(() => {});
       notify({
-        type: "success",
+        type: 'success',
         msg:
-          action === "approve"
+          action === 'approve'
             ? `Pinjaman ${memberName(updated.memberId)} disetujui — escrow dirilis.`
             : `Pinjaman ${memberName(updated.memberId)} ditolak.`,
       });
     } catch (err) {
       notify({
-        type: "error",
-        msg: err instanceof ApiError ? err.message : "Aksi pinjaman gagal.",
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Aksi pinjaman gagal.',
       });
     } finally {
       setBusyId(null);
@@ -173,18 +240,15 @@ export default function PengurusView() {
           g.id === res.group.id ? { ...g, kasSosial: res.group.kasSosial } : g,
         ),
       );
-      void api
-        .listAuditLogs(100)
-        .then(setLogs)
-        .catch(() => {});
+      void api.listAuditLogs(100).then(setLogs).catch(() => {});
       notify({
-        type: "success",
+        type: 'success',
         msg: `Tanggung renteng aktif. Kas sosial kelompok kini ${formatIdr(res.group.kasSosial)}.`,
       });
     } catch (err) {
       notify({
-        type: "error",
-        msg: err instanceof ApiError ? err.message : "Bailout renteng gagal.",
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Bailout renteng gagal.',
       });
     } finally {
       setBusyId(null);
@@ -192,20 +256,16 @@ export default function PengurusView() {
   };
 
   const handleBootstrap = async () => {
-    setBusyId("bootstrap");
+    setBusyId('bootstrap');
     try {
       await api.bootstrapOnchain();
       const status = await api.onchainStatus();
       setOnchain(status);
-      notify({
-        type: "success",
-        msg: "Bootstrap on-chain selesai (idempoten).",
-      });
+      notify({ type: 'success', msg: 'Bootstrap on-chain selesai (idempoten).' });
     } catch (err) {
       notify({
-        type: "error",
-        msg:
-          err instanceof ApiError ? err.message : "Bootstrap on-chain gagal.",
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Bootstrap on-chain gagal.',
       });
     } finally {
       setBusyId(null);
@@ -213,13 +273,14 @@ export default function PengurusView() {
   };
 
   const navItems: [Tab, typeof BarChart3, string, number | null][] = [
-    ["dashboard", BarChart3, "Dashboard", null],
-    ["kyc", Users, "Antre KYC", kycQueue.length],
-    ["grup", Users, "Kelola Kelompok", null],
-    ["pinjaman", CreditCard, "Review Pinjaman", pendingLoans.length],
-    ["penagihan", ShieldAlert, "Tangga Penagihan", arrears.length],
-    ["laporan", FileLineChart, "Laporan & e-RAT", null],
-    ["screener", ShieldCheck, "Screening Resiko by AI", null],
+    ['dashboard', BarChart3, 'Dashboard EWS', null],
+    ['kyc', Users, 'Antre KYC', kycQueue.length],
+    ['grup', Users, 'Kelola Kelompok', null],
+    ['pinjaman', CreditCard, 'Review Pinjaman', pendingLoans.length],
+    ['penagihan', ShieldAlert, 'Tangga Penagihan', arrears.length],
+    ['laporan', FileLineChart, 'Laporan & e-RAT', null],
+    ['asisten', Bot, 'Asisten AI', null],
+    ['screener', ShieldCheck, 'Skrining AI EWS', null],
   ];
 
   return (
@@ -237,9 +298,7 @@ export default function PengurusView() {
               <h3 className="font-extrabold text-sm tracking-wider uppercase">
                 RantaiRenteng
               </h3>
-              <span className="text-[10px] text-slate-400">
-                Panel Pengurus v1.0
-              </span>
+              <span className="text-[10px] text-slate-400">Panel Pengurus v1.0</span>
             </div>
           </div>
 
@@ -250,8 +309,8 @@ export default function PengurusView() {
                 onClick={() => setActiveTab(tab)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold transition-all ${
                   activeTab === tab
-                    ? "bg-[#F06A6A] text-white shadow-sm"
-                    : "text-slate-400 hover:bg-white/5"
+                    ? 'bg-[#F06A6A] text-white shadow-sm'
+                    : 'text-slate-400 hover:bg-white/5'
                 }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -285,9 +344,9 @@ export default function PengurusView() {
         {flash && (
           <div
             className={`mb-4 px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
-              flash.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                : "bg-red-50 text-red-800 border border-red-200"
+              flash.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-red-50 text-red-800 border border-red-200'
             }`}
           >
             <Activity className="w-4 h-4 shrink-0" /> {flash.msg}
@@ -301,7 +360,7 @@ export default function PengurusView() {
         )}
 
         {/* DASHBOARD */}
-        {activeTab === "dashboard" && (
+        {activeTab === 'dashboard' && (
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -340,20 +399,21 @@ export default function PengurusView() {
             <div className="bg-white rounded-xl border border-[#E4E4E4] shadow-sm overflow-hidden">
               <div className="bg-[#FCE8E6] px-4 py-3 border-b border-[#F06A6A]/10 flex items-center justify-between">
                 <h4 className="text-xs font-extrabold text-[#F06A6A] uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4" /> Kelompok / Anggota
-                  Berisiko
+                  <ShieldAlert className="w-4 h-4" /> Kelompok / Anggota Berisiko
                 </h4>
-                <span className="text-[10px] bg-[#F06A6A] text-white font-bold px-2 py-0.5 rounded-full">
-                  EWS
-                </span>
+                <InfoTooltip text={EWS_COPY} label="Tentang EWS">
+                  <span className="text-[10px] bg-[#F06A6A] text-white font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 cursor-help">
+                    EWS <Info className="w-2.5 h-2.5" />
+                  </span>
+                </InfoTooltip>
               </div>
               <div className="divide-y divide-slate-100">
                 {loans
                   .filter(
                     (l) =>
-                      l.flagAi === "MERAH" ||
-                      l.statusCicilan === "UNPAID" ||
-                      l.statusCicilan === "DITALANGI",
+                      l.flagAi === 'MERAH' ||
+                      l.statusCicilan === 'UNPAID' ||
+                      l.statusCicilan === 'DITALANGI',
                   )
                   .map((l) => (
                     <div
@@ -368,18 +428,18 @@ export default function PengurusView() {
                           {memberName(l.memberId)}
                         </h5>
                         <p className="text-slate-500 mt-1">
-                          Masalah:{" "}
+                          Masalah:{' '}
                           <strong className="text-[#F06A6A]">
-                            {l.statusCicilan === "DITALANGI"
-                              ? "Tanggung renteng aktif (ditalangi kelompok)"
-                              : l.flagAi === "MERAH"
-                                ? "AI flag MERAH"
-                                : "Angsuran jatuh tempo"}
+                            {l.statusCicilan === 'DITALANGI'
+                              ? 'Tanggung renteng aktif (ditalangi kelompok)'
+                              : l.flagAi === 'MERAH'
+                                ? 'AI flag MERAH'
+                                : 'Angsuran jatuh tempo'}
                           </strong>
                         </p>
                       </div>
                       <button
-                        onClick={() => setActiveTab("penagihan")}
+                        onClick={() => setActiveTab('penagihan')}
                         className="bg-white hover:bg-[#FCE8E6]/40 border border-[#F06A6A]/20 text-[#F06A6A] font-extrabold px-3 py-1.5 rounded-xl transition-all self-start"
                       >
                         Tindak Lanjut
@@ -388,9 +448,9 @@ export default function PengurusView() {
                   ))}
                 {loans.filter(
                   (l) =>
-                    l.flagAi === "MERAH" ||
-                    l.statusCicilan === "UNPAID" ||
-                    l.statusCicilan === "DITALANGI",
+                    l.flagAi === 'MERAH' ||
+                    l.statusCicilan === 'UNPAID' ||
+                    l.statusCicilan === 'DITALANGI',
                 ).length === 0 && (
                   <div className="p-6 text-center text-slate-400 text-xs italic">
                     Tidak ada risiko aktif.
@@ -406,9 +466,7 @@ export default function PengurusView() {
               </span>
               <div className="space-y-2 max-h-[240px] overflow-y-auto font-mono text-[11px] text-[#6D6E6F] bg-[#FAF9F8] p-3 rounded-xl border border-[#E4E4E4]">
                 {logs.length === 0 ? (
-                  <p className="italic text-slate-400">
-                    Belum ada entri audit.
-                  </p>
+                  <p className="italic text-slate-400">Belum ada entri audit.</p>
                 ) : (
                   logs.map((log) => (
                     <div
@@ -417,10 +475,10 @@ export default function PengurusView() {
                     >
                       <span className="text-slate-400">
                         [{formatTimestamp(log.timestamp)}]
-                      </span>{" "}
-                      <strong className="text-[#548235]">{log.aktor}</strong>:{" "}
-                      <span className="text-slate-800">{log.aksi}</span> &rarr;{" "}
-                      <span className="text-slate-500">{log.detail}</span>{" "}
+                      </span>{' '}
+                      <strong className="text-[#548235]">{log.aktor}</strong>:{' '}
+                      <span className="text-slate-800">{log.aksi}</span> &rarr;{' '}
+                      <span className="text-slate-500">{log.detail}</span>{' '}
                       {log.txLink && (
                         <a
                           href={log.txLink}
@@ -440,7 +498,7 @@ export default function PengurusView() {
         )}
 
         {/* KYC (Flow ①) */}
-        {activeTab === "kyc" && (
+        {activeTab === 'kyc' && (
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -463,9 +521,7 @@ export default function PengurusView() {
                 >
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-sm text-[#1E1F21]">
-                        {m.nama}
-                      </h4>
+                      <h4 className="font-bold text-sm text-[#1E1F21]">{m.nama}</h4>
                       <span className="text-[9px] bg-[#FDF6E2] border border-[#F1BD6C]/30 text-[#C55A11] px-2.5 py-0.5 rounded-full font-bold">
                         REKRUT BARU
                       </span>
@@ -474,16 +530,40 @@ export default function PengurusView() {
                       NIK: {m.nik} · Telp: {m.noHp}
                     </p>
                     <p className="text-slate-500">
-                      {m.alamat} · Pekerjaan: <strong>{m.pekerjaan}</strong> ·
-                      Peran:{" "}
+                      {m.alamat} · Pekerjaan: <strong>{m.pekerjaan}</strong> · Peran:{' '}
                       <span className="capitalize font-bold text-[#548235]">
                         {m.peran}
                       </span>
                     </p>
+                    {/* KTP document */}
+                    <div className="pt-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Dokumen KTP
+                      </span>
+                      {m.ktpUrl ? (
+                        <a
+                          href={m.ktpUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block group"
+                          title="Buka gambar KTP penuh di tab baru"
+                        >
+                          <img
+                            src={m.ktpUrl}
+                            alt={`KTP ${m.nama}`}
+                            className="h-16 w-auto max-w-[140px] object-cover rounded-lg border border-[#E4E4E4] group-hover:ring-2 group-hover:ring-[#F06A6A]/40 transition-all"
+                          />
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-400 italic bg-[#FAF9F8] border border-dashed border-[#E4E4E4] rounded-lg px-2.5 py-2">
+                          <ImageIcon className="w-3.5 h-3.5" /> Belum ada dokumen
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2 shrink-0 items-start">
                     <button
-                      onClick={() => handleKyc(m.id, "reject")}
+                      onClick={() => handleKyc(m.id, 'reject')}
                       disabled={busyId === m.id}
                       className="bg-white border border-[#E4E4E4] hover:bg-[#FCE8E6]/40 text-[#F06A6A] font-bold p-2.5 rounded-xl transition-all disabled:opacity-50"
                       title="Tolak"
@@ -491,7 +571,7 @@ export default function PengurusView() {
                       <X className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleKyc(m.id, "approve")}
+                      onClick={() => handleKyc(m.id, 'approve')}
                       disabled={busyId === m.id}
                       className="bg-[#62D26F] hover:bg-[#52C25F] text-white font-extrabold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition-all disabled:opacity-50"
                     >
@@ -499,7 +579,7 @@ export default function PengurusView() {
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <Check className="w-4 h-4" />
-                      )}{" "}
+                      )}{' '}
                       Setujui & Rilis Wallet
                     </button>
                   </div>
@@ -507,31 +587,52 @@ export default function PengurusView() {
               ))
             )}
 
-            {/* Recently minted wallets */}
+            {/* Approved members: wallets + credential reset */}
             <div className="bg-white p-4 rounded-xl border border-[#E4E4E4] space-y-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Dompet Anggota
-                Aktif
+                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Anggota Aktif &
+                Kredensial
               </span>
               {members
-                .filter((m) => m.walletAddress)
+                .filter((m) => m.statusKyc === 'Approved')
                 .map((m) => (
                   <div
                     key={m.id}
-                    className="flex justify-between items-center text-xs border-b border-slate-100 pb-1.5 last:border-0"
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs border-b border-slate-100 pb-2 last:border-0"
                   >
-                    <span className="font-bold text-slate-700">{m.nama}</span>
-                    <span className="font-mono text-[11px] text-[#6D6E6F]">
-                      {m.walletAddress}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-700 block">
+                        {m.nama}
+                      </span>
+                      <span className="font-mono text-[11px] text-[#6D6E6F] break-all">
+                        {m.walletAddress ?? 'Dompet belum diterbitkan'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleResetPassword(m)}
+                      disabled={busyId === m.id}
+                      className="shrink-0 self-start sm:self-auto inline-flex items-center gap-1.5 bg-[#FAF9F8] hover:bg-[#FCE8E6]/50 border border-[#E4E4E4] text-[#F06A6A] font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {busyId === m.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <KeyRound className="w-3.5 h-3.5" />
+                      )}
+                      Reset kata sandi
+                    </button>
                   </div>
                 ))}
+              {members.filter((m) => m.statusKyc === 'Approved').length === 0 && (
+                <p className="text-[11px] text-slate-400 italic">
+                  Belum ada anggota aktif.
+                </p>
+              )}
             </div>
           </div>
         )}
 
         {/* GRUP (read-only) */}
-        {activeTab === "grup" && (
+        {activeTab === 'grup' && (
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -561,7 +662,7 @@ export default function PengurusView() {
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Cell label="Ketua" value={memberName(g.ketuaId ?? "")} />
+                    <Cell label="Ketua" value={memberName(g.ketuaId ?? '')} />
                     <Cell label="Plafon Maks" value={formatIdr(g.plafonMaks)} />
                     <Cell
                       label="Kas Sosial"
@@ -572,17 +673,19 @@ export default function PengurusView() {
                   </div>
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Anggota ({g.anggotaIds.length})
+                      Anggota ({g.anggotaIds.length}) · klik untuk detail
                     </span>
                     {g.anggotaIds.map((id) => (
-                      <div
+                      <button
                         key={id}
-                        className="text-xs flex justify-between bg-[#FAF9F8] px-2.5 py-1.5 rounded"
+                        onClick={() => setDetailMemberId(id)}
+                        className="w-full text-xs flex justify-between items-center bg-[#FAF9F8] hover:bg-[#FCE8E6]/50 border border-transparent hover:border-[#F06A6A]/20 px-2.5 py-1.5 rounded transition-colors group"
                       >
-                        <span className="font-semibold text-slate-700">
+                        <span className="font-semibold text-slate-700 group-hover:text-[#F06A6A]">
                           {memberName(id)}
                         </span>
-                      </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#F06A6A]" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -592,7 +695,7 @@ export default function PengurusView() {
         )}
 
         {/* PINJAMAN review (Flow ②) */}
-        {activeTab === "pinjaman" && (
+        {activeTab === 'pinjaman' && (
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -616,13 +719,14 @@ export default function PengurusView() {
                     className={`px-4 py-3 border-b flex justify-between items-center ${flagStyle[l.flagAi]}`}
                   >
                     <span className="text-xs font-extrabold flex items-center gap-1">
-                      <Activity className="w-4 h-4" /> REKOMENDASI AI:{" "}
-                      {l.flagAi} (Skor {l.skorAi}/100)
+                      <Activity className="w-4 h-4" /> REKOMENDASI AI: {l.flagAi} (Skor{' '}
+                      {l.skorAi}/100)
+                      <InfoTooltip text={EWS_COPY} label="Tentang skor EWS">
+                        <Info className="w-3.5 h-3.5 opacity-70" />
+                      </InfoTooltip>
                     </span>
                     <span className="text-[10px] font-bold uppercase">
-                      {l.isSanggah
-                        ? "Ada Sanggahan Anggota"
-                        : "Menunggu Review"}
+                      {l.isSanggah ? 'Ada Sanggahan Anggota' : 'Menunggu Review'}
                     </span>
                   </div>
                   <div className="p-4 space-y-4 text-xs">
@@ -646,8 +750,7 @@ export default function PengurusView() {
                           {formatIdr(l.nominal)}
                         </strong>
                         <span className="text-[10px] text-[#6D6E6F] block">
-                          Tenor {l.tenor} bln · {formatIdr(l.cicilanBulanan)}
-                          /bln
+                          Tenor {l.tenor} bln · {formatIdr(l.cicilanBulanan)}/bln
                         </span>
                       </div>
                     </div>
@@ -672,16 +775,40 @@ export default function PengurusView() {
                       </div>
                     )}
 
+                    <EwsExplainer />
+
+                    {/* Decision-history timeline */}
+                    <LoanDecisionTimeline loanId={l.id} />
+
+                    {/* Pengurus note to member */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Catatan untuk anggota
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={loanNotes[l.id] ?? ''}
+                        onChange={(e) =>
+                          setLoanNotes((prev) => ({
+                            ...prev,
+                            [l.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: Disetujui dengan penyesuaian tenor / Perlu klarifikasi slip penghasilan…"
+                        className="w-full text-xs border border-[#E4E4E4] rounded-xl px-3 py-2 bg-[#FAF9F8] focus:bg-white focus:ring-1 focus:ring-[#F06A6A] outline-none"
+                      />
+                    </div>
+
                     <div className="flex justify-end gap-2 border-t border-[#E4E4E4] pt-3">
                       <button
-                        onClick={() => handleLoan(l.id, "reject")}
+                        onClick={() => handleLoan(l.id, 'reject')}
                         disabled={busyId === l.id}
                         className="bg-white border border-[#E4E4E4] hover:bg-slate-50 text-slate-600 font-bold px-4 py-2.5 rounded-xl transition-all disabled:opacity-50"
                       >
                         Tolak / Klarifikasi
                       </button>
                       <button
-                        onClick={() => handleLoan(l.id, "approve")}
+                        onClick={() => handleLoan(l.id, 'approve')}
                         disabled={busyId === l.id}
                         className="bg-[#F06A6A] hover:bg-[#E5544F] text-white font-extrabold px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50"
                       >
@@ -699,7 +826,7 @@ export default function PengurusView() {
         )}
 
         {/* PENAGIHAN (Flow ③ renteng bailout) */}
-        {activeTab === "penagihan" && (
+        {activeTab === 'penagihan' && (
           <div className="space-y-4">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -729,14 +856,14 @@ export default function PengurusView() {
                       </h4>
                       <span
                         className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full mt-1 ${
-                          l.statusCicilan === "DITALANGI"
-                            ? "bg-[#FCE8E6] text-[#F06A6A]"
-                            : "bg-[#FDF6E2] text-[#C55A11]"
+                          l.statusCicilan === 'DITALANGI'
+                            ? 'bg-[#FCE8E6] text-[#F06A6A]'
+                            : 'bg-[#FDF6E2] text-[#C55A11]'
                         }`}
                       >
-                        {l.statusCicilan === "DITALANGI"
-                          ? "DITALANGI (Renteng aktif)"
-                          : "Angsuran belum dibayar"}
+                        {l.statusCicilan === 'DITALANGI'
+                          ? 'DITALANGI (Renteng aktif)'
+                          : 'Angsuran belum dibayar'}
                       </span>
                     </div>
                     <div className="text-right">
@@ -750,7 +877,7 @@ export default function PengurusView() {
                   </div>
 
                   <div className="flex justify-end border-t border-[#E4E4E4] pt-3">
-                    {l.statusCicilan === "DITALANGI" ? (
+                    {l.statusCicilan === 'DITALANGI' ? (
                       <span className="text-[11px] font-bold text-[#F06A6A] bg-[#FCE8E6] px-3 py-2 rounded-xl">
                         Sudah ditalangi kas sosial kelompok
                       </span>
@@ -764,7 +891,7 @@ export default function PengurusView() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <HeartHandshake className="w-4 h-4" />
-                        )}{" "}
+                        )}{' '}
                         Aktifkan Tanggung Renteng (Talangi)
                       </button>
                     )}
@@ -776,7 +903,7 @@ export default function PengurusView() {
         )}
 
         {/* LAPORAN */}
-        {activeTab === "laporan" && (
+        {activeTab === 'laporan' && (
           <div className="space-y-4 text-xs">
             <div>
               <h2 className="text-xl font-black text-[#1E1F21]">
@@ -786,36 +913,8 @@ export default function PengurusView() {
                 Rekapitulasi neraca real-time dari ledger koperasi.
               </p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-[#E4E4E4] space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Cell
-                  label="Total Aset Likuid (Tabungan)"
-                  value={formatIdr(totalSavings)}
-                  big
-                />
-                <Cell
-                  label="Total Piutang (Escrow)"
-                  value={formatIdr(outstanding)}
-                  accent="#548235"
-                  big
-                />
-                <Cell label="Jumlah Kelompok" value={`${groups.length}`} big />
-                <Cell
-                  label="Keanggotaan"
-                  value={`${members.length} orang`}
-                  big
-                />
-              </div>
-              <div className="p-3 bg-[#EDF9F0] border border-[#62D26F]/20 rounded-xl text-slate-700 space-y-1">
-                <h4 className="font-bold text-[#1E1F21]">
-                  Rasio NPL Terkendali
-                </h4>
-                <p className="text-[#6D6E6F]">
-                  Agunan sosial tanggung renteng menahan gagal bayar di{" "}
-                  <strong className="text-[#548235]">{nplRate}%</strong>.
-                </p>
-              </div>
-            </div>
+            {/* e-RAT report: stat cards, SVG charts, data tables, XLSX export */}
+            <ERatReportPanel />
 
             {/* On-chain status + bootstrap */}
             <div className="bg-white p-5 rounded-xl border border-[#E4E4E4] space-y-3">
@@ -825,10 +924,10 @@ export default function PengurusView() {
                 </span>
                 <button
                   onClick={handleBootstrap}
-                  disabled={busyId === "bootstrap"}
+                  disabled={busyId === 'bootstrap'}
                   className="bg-[#1E1F21] hover:bg-black text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  {busyId === "bootstrap" && (
+                  {busyId === 'bootstrap' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   )}
                   Bootstrap On-Chain
@@ -840,43 +939,78 @@ export default function PengurusView() {
                     label="Relayer"
                     value={shortAddress(onchain.relayerAddress)}
                   />
-                  <Cell
-                    label="Admin"
-                    value={shortAddress(onchain.adminAddress)}
-                  />
+                  <Cell label="Admin" value={shortAddress(onchain.adminAddress)} />
                   <Cell
                     label="Relayer dapat menulis"
-                    value={onchain.canRelayerWrite ? "Ya" : "Tidak"}
+                    value={onchain.canRelayerWrite ? 'Ya' : 'Tidak'}
                   />
                   <Cell
                     label="Koperasi dapat menulis"
-                    value={onchain.canKoperasiWrite ? "Ya" : "Tidak"}
+                    value={onchain.canKoperasiWrite ? 'Ya' : 'Tidak'}
                   />
                 </div>
               ) : (
-                <p className="text-slate-400 italic">
-                  Status on-chain tidak tersedia.
-                </p>
+                <p className="text-slate-400 italic">Status on-chain tidak tersedia.</p>
               )}
             </div>
           </div>
         )}
 
-        {/* SCREENER */}
-        {activeTab === "screener" && (
+        {/* ASISTEN AI (Flow ⑤) */}
+        {activeTab === 'asisten' && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-black text-[#1E1F21]">
+              <h2 className="text-xl font-black text-[#1E1F21]">Asisten AI Koperasi</h2>
+              <p className="text-xs text-[#6D6E6F]">
+                Tanya jawab data koperasi — grounded pada snapshot ledger real-time
+                (Gemini).
+              </p>
+            </div>
+            <AssistantChat />
+          </div>
+        )}
+
+        {/* SCREENER */}
+        {activeTab === 'screener' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-black text-[#1E1F21] flex items-center gap-1.5">
                 Asisten Skrining EWS AI (Kalkulator Manual)
+                <InfoTooltip text={EWS_COPY} label="Tentang EWS">
+                  <Info className="w-4 h-4 text-[#F06A6A]" />
+                </InfoTooltip>
               </h2>
               <p className="text-xs text-[#6D6E6F]">
                 Hitung kelayakan secara transparan sebelum pencairan.
               </p>
             </div>
+            <EwsExplainer />
             <RiskScreenerTool />
           </div>
         )}
       </div>
+
+      {/* One-time credential card (KYC approve / password reset) */}
+      {credential && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm">
+            <CredentialCard
+              nik={credential.nik}
+              password={credential.password}
+              nama={credential.nama}
+              onClose={() => setCredential(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Member detail drawer */}
+      {detailMemberId && (
+        <MemberDetailDrawer
+          memberId={detailMemberId}
+          onClose={() => setDetailMemberId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -898,10 +1032,7 @@ function KpiCard({
         {label}
       </span>
       <div className="flex justify-between items-baseline mt-1.5 gap-2">
-        <span
-          className="text-lg font-black break-all"
-          style={{ color: accent }}
-        >
+        <span className="text-lg font-black break-all" style={{ color: accent }}>
           {value}
         </span>
         {badge && (
@@ -929,8 +1060,8 @@ function Cell({
     <div className="bg-[#FAF9F8] p-2.5 rounded-lg">
       <span className="text-[10px] text-slate-400 block">{label}</span>
       <strong
-        className={`${big ? "text-base" : "text-xs"} block mt-0.5 capitalize`}
-        style={{ color: accent ?? "#1E1F21" }}
+        className={`${big ? 'text-base' : 'text-xs'} block mt-0.5 capitalize`}
+        style={{ color: accent ?? '#1E1F21' }}
       >
         {value}
       </strong>

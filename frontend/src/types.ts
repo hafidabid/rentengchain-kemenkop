@@ -71,6 +71,7 @@ export interface Loan {
   flagAlasan: string[];
   isSanggah: boolean;
   sanggahAlasan?: string | null;
+  catatanPengurus?: string | null;
   onchainLoanId?: string | null;
   txHash?: string | null;
   txLink?: string | null;
@@ -117,4 +118,113 @@ export interface OnchainStatus {
   adminAddress: string | null;
   canRelayerWrite: boolean;
   canKoperasiWrite: boolean;
+}
+
+// --- Admin tools (Pengurus) ---
+
+/** One-time credential returned to a Pengurus when approving/resetting a member. */
+export interface TempCredential {
+  nik: string;
+  tempPassword: string;
+}
+
+/** One entry in a loan's Pengurus decision history timeline. */
+export interface LoanDecision {
+  id: string;
+  decision: string;
+  note: string | null;
+  aktor: string;
+  createdAt: string;
+}
+
+/** A tanggung-renteng history entry surfaced in the member detail drawer. */
+export interface RentengHistoryEntry {
+  id: string;
+  event: string;
+  amount: number;
+  period: number;
+  createdAt: string;
+  txHash?: string | null;
+  loanId?: string;
+  memberId?: string;
+}
+
+/** Full Pengurus-facing member detail: profile + savings + loans + renteng. */
+export interface MemberDetail {
+  member: Member;
+  savings: SavingTransaction[];
+  loans: Loan[];
+  rentengHistory: RentengHistoryEntry[];
+}
+
+// --- Assistant (Pengurus) ---
+
+export interface ChatTurn {
+  role: 'user' | 'model';
+  text: string;
+}
+
+export interface AssistantChatResult {
+  reply: string;
+  grounded: boolean;
+  snapshotAt: string;
+  configured: boolean;
+}
+
+// --- e-RAT report (Pengurus) ---
+
+export interface ERatSummary {
+  totalAnggota: number;
+  anggotaApproved: number;
+  totalSimpanan: number;
+  totalKasSosial: number;
+  totalPinjaman: number;
+  pinjamanAktif: number;
+  rentengAktif: number;
+}
+
+export interface ERatCharts {
+  loansByFlag: { flag: string; count: number }[];
+  loansByStatus: { status: string; count: number }[];
+  simpananByJenis: { jenis: string; total: number }[];
+  savingsOverTime: { month: string; total: number }[];
+}
+
+export interface ERatAnggotaRow {
+  nama: string;
+  nik: string;
+  statusKyc: string;
+  skorKeanggotaan: number;
+  simpananTotal: number;
+  walletAddress: string | null;
+}
+
+export interface ERatPinjamanRow {
+  memberNama: string;
+  nominal: number;
+  status: string;
+  statusCicilan: string;
+  flagAi: string;
+  skorAi: number;
+}
+
+export interface ERatRentengRow {
+  memberNama: string;
+  event: string;
+  amount: number;
+  period: number;
+  createdAt: string;
+}
+
+export interface ERatTables {
+  anggota: ERatAnggotaRow[];
+  pinjaman: ERatPinjamanRow[];
+  tanggungRenteng: ERatRentengRow[];
+}
+
+export interface ERatReport {
+  generatedAt: string;
+  summary: ERatSummary;
+  charts: ERatCharts;
+  tables: ERatTables;
 }

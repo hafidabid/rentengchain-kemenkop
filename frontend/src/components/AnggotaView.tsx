@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Loader2,
   ShieldCheck,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { api, ApiError, DEMO_GROUP_ID } from "../lib/api";
@@ -690,6 +691,21 @@ export default function AnggotaView() {
                     AI Skor: {appliedLoan.skorAi}/100
                   </span>
                 </div>
+
+                {/* Pengurus note on a rejected / held / appealed loan */}
+                {appliedLoan.catatanPengurus && (
+                  <div className="bg-[#FCE8E6] border border-[#F06A6A]/25 rounded-xl p-3 flex items-start gap-2">
+                    <MessageSquare className="w-4 h-4 text-[#F06A6A] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-[11px] text-[#F06A6A] uppercase tracking-wider mb-0.5">
+                        Catatan Pengurus
+                      </strong>
+                      <p className="text-xs text-[#5C0A1A] italic leading-relaxed">
+                        "{appliedLoan.catatanPengurus}"
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="text-xs space-y-2">
                   <div className="flex justify-between">

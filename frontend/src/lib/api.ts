@@ -3,12 +3,17 @@
 // lives under /api. The JWT is read from localStorage and sent as a Bearer token.
 
 import type {
+  AssistantChatResult,
   AuditLog,
   BailoutResult,
+  ChatTurn,
+  ERatReport,
   Group,
   Loan,
+  LoanDecision,
   LoginResult,
   Member,
+  MemberDetail,
   OnchainStatus,
   Peran,
   SavingJenis,
@@ -144,6 +149,10 @@ export const api = {
   getMember(id: string): Promise<Member> {
     return request<Member>(`/members/${id}`);
   },
+  /** Full member detail (profile + savings + loans + renteng history). */
+  getMemberDetail(id: string): Promise<MemberDetail> {
+    return request<MemberDetail>(`/members/${id}/detail`);
+  },
 
   // --- Groups ---
   listGroups(): Promise<Group[]> {
@@ -202,11 +211,20 @@ export const api = {
     }
     return data as { ktpUrl: string };
   },
-  approveKyc(id: string): Promise<Member> {
-    return request<Member>(`/kyc/approve/${id}`, { method: 'POST' });
+  approveKyc(id: string): Promise<Member & { tempPassword?: string }> {
+    return request<Member & { tempPassword?: string }>(
+      `/kyc/approve/${id}`,
+      { method: 'POST' },
+    );
   },
   rejectKyc(id: string): Promise<Member> {
     return request<Member>(`/kyc/reject/${id}`, { method: 'POST' });
+  },
+  /** Rotate a member's credential; returns a fresh one-time password. */
+  resetPassword(id: string): Promise<{ tempPassword: string }> {
+    return request<{ tempPassword: string }>(`/kyc/${id}/reset-password`, {
+      method: 'POST',
+    });
   },
 
   // --- Savings (Flow ④) ---
@@ -244,13 +262,16 @@ export const api = {
       body: { alasan },
     });
   },
-  approveLoan(id: string): Promise<Loan> {
-    return request<Loan>(`/loans/approve/${id}`, { method: 'POST' });
+  approveLoan(id: string, note?: string): Promise<Loan> {
+    return request<Loan>(`/loans/approve/${id}`, {
+      method: 'POST',
+      body: { note },
+    });
   },
-  rejectLoan(id: string, reason?: string): Promise<Loan> {
+  rejectLoan(id: string, note?: string): Promise<Loan> {
     return request<Loan>(`/loans/reject/${id}`, {
       method: 'POST',
-      body: { reason },
+      body: { note },
     });
   },
   listLoans(): Promise<Loan[]> {
@@ -258,6 +279,10 @@ export const api = {
   },
   getLoan(id: string): Promise<Loan> {
     return request<Loan>(`/loans/${id}`);
+  },
+  /** Pengurus decision-history timeline for one loan. */
+  getLoanDecisions(id: string): Promise<LoanDecision[]> {
+    return request<LoanDecision[]>(`/loans/${id}/decisions`);
   },
 
   // --- Renteng (Flow ③) ---
@@ -269,6 +294,63 @@ export const api = {
       method: 'POST',
       body: payload,
     });
+  },
+
+  // --- Assistant (Flow ⑤) ---
+  assistantSnapshot(): Promise<unknown> {
+    return request<unknown>('/assistant/snapshot');
+  },
+  assistantChat(history: ChatTurn[]): Promise<AssistantChatResult> {
+    return request<AssistantChatResult>('/assistant/chat', {
+      method: 'POST',
+      body: { history },
+    });
+  },
+
+  // --- Reports / e-RAT (Flow ⑥) ---
+  getERat(): Promise<ERatReport> {
+    return request<ERatReport>('/reports/e-rat');
+  },
+  /** Fetch the e-RAT XLSX with auth and trigger a browser download. */
+  async exportERatXlsx(): Promise<void> {
+    const headers: Record<string, string> = {};
+    const token = getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let res: Response;
+    try {
+      res = await fetch(`${BASE_URL}/api/reports/e-rat/export.xlsx`, {
+        method: 'GET',
+        headers,
+      });
+    } catch {
+      throw new ApiError(
+        0,
+        'Tidak dapat terhubung ke server backend untuk mengunduh laporan.',
+      );
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      const data = text ? safeJson(text) : undefined;
+      const message =
+        (data && (data.message || data.error)) ||
+        res.statusText ||
+        'Unduh laporan gagal';
+      throw new ApiError(
+        res.status,
+        Array.isArray(message) ? message.join(', ') : String(message),
+      );
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'e-rat.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   },
 
   // --- Admin ---
