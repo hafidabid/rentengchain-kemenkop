@@ -84,6 +84,7 @@ issue_cert "$API_DOMAIN"
 
 # ---- 2) Frontend (built against the now-HTTPS API) --------------------------
 log "Building + starting frontend (VITE_API_URL=https://$API_DOMAIN)"
+VITE_DEMO_GROUP_ID=e5f6a7b8-9c0d-41e2-8a4b-5c6d7e8f9a0b
 VITE_API_URL="https://$API_DOMAIN" $COMPOSE up -d --build frontend
 
 log "Configuring nginx for $APP_DOMAIN and issuing its cert"
