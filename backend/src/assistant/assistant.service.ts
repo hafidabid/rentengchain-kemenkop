@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolveGenAI } from '../common/genai.util';
 import {
   MetadataSnapshotService,
   Snapshot,
@@ -18,10 +19,8 @@ export interface ChatResult {
   configured: boolean;
 }
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
-
 const NOT_CONFIGURED_PREFIX =
-  'Asisten belum dikonfigurasi (set GEMINI_API_KEY). Berikut ringkasan data terkini.';
+  'Asisten belum dikonfigurasi (aktifkan Vertex/gcloud atau set GEMINI_API_KEY). Berikut ringkasan data terkini.';
 
 /**
  * Pengurus-facing cooperative chatbot. Grounds Google Gemini on the maintained
@@ -47,11 +46,9 @@ export class AssistantService {
     const snapshot = await this.snapshots.getSnapshot();
     const snapshotAt = snapshot.generatedAt;
 
-    const apiKey =
-      this.config.get<string>('GEMINI_API_KEY') ??
-      this.config.get<string>('GOOGLE_API_KEY');
+    const genai = resolveGenAI(this.config);
 
-    if (!apiKey) {
+    if (!genai.configured) {
       return {
         reply: `${NOT_CONFIGURED_PREFIX}\n\n${this.summarize(snapshot)}`,
         grounded: false,
@@ -64,10 +61,8 @@ export class AssistantService {
       this.config.get<string>('ASSISTANT_WEB_GROUNDING') === 'true';
 
     try {
-      // Imported lazily so tests that never set a key don't load the SDK.
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey });
-      const model = this.config.get<string>('GEMINI_MODEL') ?? DEFAULT_MODEL;
+      const ai = await genai.create();
+      const model = genai.model;
 
       const config: Record<string, unknown> = {
         systemInstruction: this.systemInstruction(snapshot),

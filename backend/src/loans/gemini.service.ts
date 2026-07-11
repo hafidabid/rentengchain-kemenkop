@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolveGenAI } from '../common/genai.util';
 
 export type RiskFlag = 'HIJAU' | 'KUNING' | 'MERAH';
 
@@ -21,8 +22,6 @@ export interface ScreenResult {
   flagAlasan: string[];
 }
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
-
 /**
  * Live AI Early-Warning System. Calls Gemini via `@google/genai` to score a
  * loan applicant's risk, and — CRUCIALLY for a live demo — degrades to a
@@ -37,20 +36,16 @@ export class GeminiService {
   constructor(private readonly config: ConfigService) {}
 
   async screen(input: ScreenInput): Promise<ScreenResult> {
-    const apiKey =
-      this.config.get<string>('GEMINI_API_KEY') ??
-      this.config.get<string>('GOOGLE_API_KEY');
+    const genai = resolveGenAI(this.config);
 
-    if (!apiKey) {
-      this.logger.warn('fallback_used: no GEMINI_API_KEY/GOOGLE_API_KEY configured');
+    if (!genai.configured) {
+      this.logger.warn('fallback_used: Gemini not configured (Vertex/ADC or API key)');
       return this.fallback(input);
     }
 
     try {
-      // Imported lazily so tests that never set a key don't load the SDK.
-      const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ apiKey });
-      const model = this.config.get<string>('GEMINI_MODEL') ?? DEFAULT_MODEL;
+      const ai = await genai.create();
+      const model = genai.model;
       const r = await ai.models.generateContent({
         model,
         contents: this.buildPrompt(input),
