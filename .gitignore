@@ -24,3 +24,7 @@ foundry/.env
 foundry/.gas-snapshot
 lcov.info
 coverage/
+
+# Vertex access token file (minted by deploy/refresh-token.sh)
+deploy/.gemini-token
+deploy/.gemini-token.log

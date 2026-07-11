@@ -17,21 +17,15 @@ log() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 
 cd "$ROOT"
 
-# --- Gemini via Vertex AI: mint a fresh access token for the backend container ---
-# (No API key. The token lasts ~1h — re-run this script to refresh it, or use a
-#  service account via GOOGLE_APPLICATION_CREDENTIALS for a long-lived server.)
+# --- Gemini via Vertex AI: refresh the token file the backend reads (no API key).
+# A cron (installed by init.sh) also refreshes it every ~50m; this covers the
+# deploy moment. gcloud auth is the invoking user's, so honour SUDO_USER.
 export PROJECT_ID="${PROJECT_ID:-kemenkop-hackathon-2026-1a00}"
 export REGION="${REGION:-global}"
-if command -v gcloud >/dev/null 2>&1; then
-  export GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
-  if [ -n "${GOOGLE_ACCESS_TOKEN:-}" ]; then
-    log "Minted Gemini/Vertex access token (project $PROJECT_ID, region $REGION)"
-  else
-    log "WARN: gcloud could not mint a token — assistant/EWS will degrade until GOOGLE_ACCESS_TOKEN is set"
-  fi
-else
-  log "WARN: gcloud not found — set GOOGLE_ACCESS_TOKEN (or a service account) for Vertex"
-fi
+AS_USER=""; [ -n "${SUDO_USER:-}" ] && AS_USER="sudo -u $SUDO_USER"
+log "Refreshing Gemini/Vertex token"
+$AS_USER bash "$ROOT/deploy/refresh-token.sh" \
+  || log "WARN: token refresh failed (gcloud reauth?) — assistant/EWS will degrade"
 
 log "Pulling latest code"
 git pull --ff-only

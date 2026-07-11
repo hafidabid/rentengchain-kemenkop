@@ -67,16 +67,15 @@ issue_cert() { # $1 domain
 }
 
 # ---- 1) Backend first -------------------------------------------------------
-# Gemini via Vertex: mint a fresh access token for the backend container (no API key).
+# Gemini via Vertex: write the initial access token file (no API key), and later
+# a cron keeps it fresh. gcloud auth belongs to the invoking user, so run the
+# token bits as SUDO_USER when this script is run via sudo.
 export PROJECT_ID="${PROJECT_ID:-kemenkop-hackathon-2026-1a00}"
 export REGION="${REGION:-global}"
-if command -v gcloud >/dev/null 2>&1; then
-  export GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
-  [ -n "${GOOGLE_ACCESS_TOKEN:-}" ] && log "Minted Gemini/Vertex access token ($PROJECT_ID)" \
-    || log "WARN: gcloud could not mint a token — assistant/EWS will degrade until GOOGLE_ACCESS_TOKEN is set"
-else
-  log "WARN: gcloud not found — set GOOGLE_ACCESS_TOKEN (or a service account) for Vertex"
-fi
+AS_USER=""; [ -n "${SUDO_USER:-}" ] && AS_USER="sudo -u $SUDO_USER"
+log "Minting initial Gemini/Vertex token"
+$AS_USER bash "$ROOT/deploy/refresh-token.sh" \
+  || log "WARN: token mint failed (gcloud reauth?) — assistant/EWS will degrade"
 
 log "Building + starting database and backend"
 $COMPOSE up -d --build db backend
@@ -102,6 +101,15 @@ log "Configuring nginx for $APP_DOMAIN and issuing its cert"
 write_proxy_block "$APP_DOMAIN" 8080
 $SUDO nginx -t && $SUDO systemctl reload nginx
 issue_cert "$APP_DOMAIN"
+
+# ---- Keep the Vertex token fresh (gcloud tokens last ~1h) -------------------
+log "Installing token-refresh cron (every 50 min)"
+CRON_LINE="*/50 * * * * $ROOT/deploy/refresh-token.sh >> $ROOT/deploy/.gemini-token.log 2>&1"
+if $AS_USER bash -c "( crontab -l 2>/dev/null | grep -v 'deploy/refresh-token.sh'; echo '$CRON_LINE' ) | crontab -"; then
+  log "cron installed (refreshes $ROOT/deploy/.gemini-token)"
+else
+  log "WARN: could not install cron — refresh manually (bash deploy/refresh-token.sh) or use a service account"
+fi
 
 log "Done."
 echo "  Backend : https://$API_DOMAIN/health"

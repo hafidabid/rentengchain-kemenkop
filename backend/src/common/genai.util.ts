@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { execFile } from 'child_process';
+import { readFileSync } from 'fs';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
@@ -37,14 +38,28 @@ export interface ResolvedGenAI {
 let tokenCache: { value: string; expiresAt: number } | null = null;
 
 async function getVertexAccessToken(config: ConfigService): Promise<string> {
+  // 1) A token file (refreshed out-of-band, e.g. by deploy/refresh-token.sh +
+  //    cron) — read live with a short cache so refreshes are picked up without a
+  //    restart. Preferred in containers where gcloud isn't installed.
+  const tokenFile =
+    config.get<string>('GOOGLE_ACCESS_TOKEN_FILE') ||
+    process.env.GOOGLE_ACCESS_TOKEN_FILE;
+  const now = Date.now();
+  if (tokenFile) {
+    if (tokenCache && tokenCache.expiresAt > now) return tokenCache.value;
+    const token = readFileSync(tokenFile, 'utf8').trim();
+    if (!token) throw new Error(`Empty token file: ${tokenFile}`);
+    tokenCache = { value: token, expiresAt: now + 30 * 1000 };
+    return token;
+  }
+
+  // 2) A static token in the environment.
   const envToken =
     config.get<string>('GOOGLE_ACCESS_TOKEN') || process.env.GOOGLE_ACCESS_TOKEN;
   if (envToken) return envToken.trim();
 
-  const now = Date.now();
+  // 3) Fallback: mint one from the local gcloud (dev host / any host with gcloud).
   if (tokenCache && tokenCache.expiresAt > now) return tokenCache.value;
-
-  // Fallback: mint one from the local gcloud (dev host / any host with gcloud).
   const { stdout } = await execFileAsync('gcloud', ['auth', 'print-access-token'], {
     timeout: 15000,
   });
