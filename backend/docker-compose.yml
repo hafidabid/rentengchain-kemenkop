@@ -8,36 +8,40 @@ services:
       POSTGRES_PASSWORD: rantai
       POSTGRES_DB: rantairenteng
     ports:
-      - '5433:5432'
+      - "5433:5432"
     volumes:
       - rantairenteng_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U rantai -d rantairenteng']
+      test: ["CMD-SHELL", "pg_isready -U rantai -d rantairenteng"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # S3-compatible object storage for KTP images (no AWS account needed).
-  # Console: http://localhost:9001 (minioadmin/minioadmin). API: :9000.
-  minio:
-    image: minio/minio:latest
-    container_name: rantairenteng-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - '9000:9000'
-      - '9001:9001'
-    volumes:
-      - rantairenteng_minio:/data
-    healthcheck:
-      test: ['CMD-SHELL', 'mc ready local || curl -f http://localhost:9000/minio/health/live || exit 1']
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    # S3-compatible object storage for KTP images (no AWS account needed).
+    # Console: http://localhost:9001 (minioadmin/minioadmin). API: :9000.
+    # minio:
+    # image: minio/minio:latest
+    # container_name: rantairenteng-minio
+    # restart: unless-stopped
+    # command: server /data --console-address ":9001"
+    # environment:
+    #   MINIO_ROOT_USER: minioadmin
+    #   MINIO_ROOT_PASSWORD: minioadmin
+    # ports:
+    #   - "9000:9000"
+    #   - "9001:9001"
+    # volumes:
+    #   - rantairenteng_minio:/data
+    # healthcheck:
+    #   test:
+    #     [
+    #       "CMD-SHELL",
+    #       "mc ready local || curl -f http://localhost:9000/minio/health/live || exit 1",
+    #     ]
+    #   interval: 5s
+    #   timeout: 5s
+    #   retries: 10
 
 volumes:
   rantairenteng_pgdata:
-  rantairenteng_minio:
+  # rantairenteng_minio:
