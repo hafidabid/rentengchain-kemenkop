@@ -1,12 +1,28 @@
 /**
- * Dummy KTP (Indonesian ID card) image generator. Produces an SVG card with the
- * member's name + NIK so the demo has a real, viewable KTP without a real scan.
- * SVG needs no native image deps and renders directly in <img> / the browser.
+ * Dummy KTP (Indonesian ID card) image for the demo. Primary source is a bundled
+ * JPEG asset (`backend/assets/rantai-renteng-ktp.jpeg`, overridable via
+ * KTP_DUMMY_IMAGE_PATH); if that file is missing it falls back to a generated SVG
+ * card so the seed never fails. Object key is derived from the member's NIK.
  */
-export interface GeneratedKtp {
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+export interface KtpImage {
   key: string;
   contentType: string;
-  body: string;
+  body: Buffer | string;
+}
+
+/** Object key for a member's KTP, derived from NIK + file extension. */
+export function ktpKey(nik: string, ext: string): string {
+  return `ktp/${nik}.${ext}`;
+}
+
+function dummyImagePath(): string {
+  return (
+    process.env.KTP_DUMMY_IMAGE_PATH ||
+    join(process.cwd(), 'assets', 'rantai-renteng-ktp.jpeg')
+  );
 }
 
 function escapeXml(s: string): string {
@@ -19,12 +35,8 @@ function escapeXml(s: string): string {
   );
 }
 
-/** Object key for a member's KTP, derived from NIK (stable/idempotent). */
-export function ktpKey(nik: string): string {
-  return `ktp/${nik}.svg`;
-}
-
-export function generateDummyKtp(nama: string, nik: string): GeneratedKtp {
+/** SVG fallback used only when the JPEG asset cannot be read. */
+export function generateSvgKtp(nama: string, nik: string): KtpImage {
   const safeNama = escapeXml(nama);
   const safeNik = escapeXml(nik);
   const body = `<?xml version="1.0" encoding="UTF-8"?>
@@ -33,17 +45,26 @@ export function generateDummyKtp(nama: string, nik: string): GeneratedKtp {
   <rect x="0" y="0" width="640" height="64" rx="16" fill="#F06A6A"/>
   <rect x="0" y="40" width="640" height="24" fill="#F06A6A"/>
   <text x="24" y="41" font-family="Arial, sans-serif" font-size="20" font-weight="700" fill="#ffffff">KARTU TANDA PENDUDUK — DUMMY</text>
-  <rect x="440" y="96" width="176" height="220" rx="8" fill="#EAE8E6" stroke="#C9C6C2"/>
-  <text x="528" y="212" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6D6E6F">FOTO</text>
   <g font-family="Arial, sans-serif" fill="#1E1F21">
     <text x="24" y="112" font-size="13" fill="#6D6E6F">NIK</text>
     <text x="24" y="140" font-size="24" font-weight="700" letter-spacing="2">${safeNik}</text>
     <text x="24" y="184" font-size="13" fill="#6D6E6F">Nama</text>
     <text x="24" y="210" font-size="22" font-weight="600">${safeNama}</text>
-    <text x="24" y="250" font-size="13" fill="#6D6E6F">Kewarganegaraan</text>
-    <text x="24" y="272" font-size="18">WNI</text>
   </g>
   <text x="24" y="360" font-family="Arial, sans-serif" font-size="12" fill="#9a9896">RantaiRenteng — contoh KTP untuk demo, bukan dokumen resmi.</text>
 </svg>`;
-  return { key: ktpKey(nik), contentType: 'image/svg+xml', body };
+  return { key: ktpKey(nik, 'svg'), contentType: 'image/svg+xml', body };
+}
+
+/**
+ * Dummy KTP for a member: the bundled JPEG asset, or the SVG fallback if the
+ * asset file is unreadable.
+ */
+export function dummyKtpFor(nama: string, nik: string): KtpImage {
+  try {
+    const body = readFileSync(dummyImagePath());
+    return { key: ktpKey(nik, 'jpg'), contentType: 'image/jpeg', body };
+  } catch {
+    return generateSvgKtp(nama, nik);
+  }
 }

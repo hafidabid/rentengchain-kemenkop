@@ -6,7 +6,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
-import { generateDummyKtp } from '../src/storage/ktp';
+import { dummyKtpFor } from '../src/storage/ktp';
 import { S3Service } from '../src/storage/s3.service';
 
 async function main(): Promise<void> {
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
 
   const members = await prisma.member.findMany();
   for (const m of members) {
-    const ktp = generateDummyKtp(m.nama, m.nik);
+    const ktp = dummyKtpFor(m.nama, m.nik);
     const url = await s3.ensureObject(ktp.key, () => ktp.body, ktp.contentType);
     await prisma.member.update({ where: { id: m.id }, data: { ktpUrl: url } });
     // eslint-disable-next-line no-console

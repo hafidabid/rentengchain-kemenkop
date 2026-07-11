@@ -5,7 +5,7 @@
  */
 import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
-import { generateDummyKtp } from '../src/storage/ktp';
+import { dummyKtpFor } from '../src/storage/ktp';
 import { S3Service } from '../src/storage/s3.service';
 
 const cfg = {
@@ -17,7 +17,7 @@ async function main(): Promise<void> {
   console.log('enabled:', s3.enabled);
   if (!s3.enabled) throw new Error('S3 not enabled (missing creds)');
 
-  const ktp = generateDummyKtp('S3 Smoke Test', '0000000000000000');
+  const ktp = dummyKtpFor('S3 Smoke Test', '0000000000000000');
   const url = await s3.ensureObject(ktp.key, () => ktp.body, ktp.contentType);
   console.log('uploaded ->', url);
   console.log('exists   ->', await s3.objectExists(ktp.key));
