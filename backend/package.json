@@ -18,7 +18,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:reset": "prisma migrate reset --force",
-    "seed:ktp": "ts-node --compiler-options {\"module\":\"CommonJS\"} scripts/seed-ktp.ts"
+    "seed:ktp": "ts-node scripts/seed-ktp.ts"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

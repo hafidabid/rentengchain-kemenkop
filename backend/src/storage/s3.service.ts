@@ -78,14 +78,33 @@ export class S3Service {
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
   }
 
-  /** Create the bucket if it does not exist (idempotent). */
+  /**
+   * Ensure the bucket exists. Robust for both MinIO (auto-create) and a
+   * pre-existing AWS bucket with object-only IAM: only create on a clear 404,
+   * otherwise assume it exists and continue (don't block uploads).
+   */
   async ensureBucket(): Promise<void> {
     const client = this.require();
     try {
       await client.send(new HeadBucketCommand({ Bucket: this.bucket }));
-    } catch {
+      return; // exists and reachable
+    } catch (err: any) {
+      const status = err?.$metadata?.httpStatusCode;
+      if (status && status !== 404) {
+        this.logger.warn(
+          `HeadBucket ${this.bucket} returned ${status}; assuming it exists.`,
+        );
+        return;
+      }
+    }
+    try {
       await client.send(new CreateBucketCommand({ Bucket: this.bucket }));
       this.logger.log(`Created bucket ${this.bucket}`);
+    } catch (err: any) {
+      // AlreadyOwnedByYou / AlreadyExists / AccessDenied — fine, keep going.
+      this.logger.warn(
+        `CreateBucket ${this.bucket} skipped: ${err?.name ?? err}`,
+      );
     }
   }
 
@@ -98,7 +117,13 @@ export class S3Service {
       return true;
     } catch (err: any) {
       const status = err?.$metadata?.httpStatusCode;
-      if (status === 404 || err?.name === 'NotFound') return false;
+      if (status === 404 || err?.name === 'NotFound' || err?.name === 'NoSuchKey')
+        return false;
+      // 403 (no head permission) — treat as unknown; re-upload is harmless.
+      if (status === 403) {
+        this.logger.warn(`HeadObject ${key} denied (403); will (re)upload.`);
+        return false;
+      }
       throw err;
     }
   }
