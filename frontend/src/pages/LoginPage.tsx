@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Landmark, LogIn, ShieldCheck, Loader2, UserPlus } from 'lucide-react';
-import { useAuth } from '../lib/auth';
-import { ApiError } from '../lib/api';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Landmark, LogIn, ShieldCheck, Loader2, UserPlus } from "lucide-react";
+import { useAuth } from "../lib/auth";
+import { ApiError } from "../lib/api";
 
 const DEMO_ACCOUNTS = [
-  { label: 'Pengurus (Admin)', nik: '3273010000000001' },
-  { label: 'Sri (Anggota, skor 98)', nik: '3273012345678901' },
-  { label: 'Anisa (Anggota, skor 45)', nik: '3273011122334455' },
+  { label: "Pengurus (Admin)", nik: "3273010000000001" },
+  { label: "Sri (Anggota, skor 98)", nik: "3273012345678901" },
+  { label: "Anisa (Anggota, skor 45)", nik: "3273011122334455" },
 ];
 
-const DEMO_PASSWORD = 'RantaiRenteng2026';
+const DEMO_PASSWORD = "RantaiRenteng2026";
 
 export default function LoginPage() {
   const { member, login } = useAuth();
   const navigate = useNavigate();
 
-  const [identifier, setIdentifier] = useState('');
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +24,7 @@ export default function LoginPage() {
   // If already authenticated, bounce to the correct surface.
   useEffect(() => {
     if (member) {
-      navigate(member.role === 'Pengurus' ? '/laman-pengurus' : '/', {
+      navigate(member.role === "Pengurus" ? "/laman-pengurus" : "/", {
         replace: true,
       });
     }
@@ -36,14 +36,14 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const m = await login(identifier.trim(), password);
-      navigate(m.role === 'Pengurus' ? '/laman-pengurus' : '/', {
+      navigate(m.role === "Pengurus" ? "/laman-pengurus" : "/", {
         replace: true,
       });
     } catch (err) {
       setError(
         err instanceof ApiError
           ? err.message
-          : 'Terjadi kesalahan tak terduga saat masuk.',
+          : "Terjadi kesalahan tak terduga saat masuk.",
       );
     } finally {
       setSubmitting(false);
@@ -141,8 +141,8 @@ export default function LoginPage() {
         {/* Demo credential helper */}
         <div className="bg-white mt-4 p-4 rounded-2xl border border-[#E4E4E4] space-y-2">
           <span className="text-[10px] font-bold text-[#6D6E6F] uppercase tracking-widest flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#F06A6A]" /> Akun Demo (kata
-            sandi: {DEMO_PASSWORD})
+            <ShieldCheck className="w-3.5 h-3.5 text-[#F06A6A]" /> Akun Demo
+            (kata sandi: {DEMO_PASSWORD})
           </span>
           <div className="space-y-1.5">
             {DEMO_ACCOUNTS.map((acc) => (
@@ -163,7 +163,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] text-[#9CA1A8] mt-4">
-          &copy; 2026 RantaiRenteng · Koperasi Desa Merah Putih
+          &copy; 2026 RantaiRenteng by Calon Manager Merah Putih
         </p>
       </div>
     </div>

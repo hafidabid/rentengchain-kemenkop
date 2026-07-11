@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Smartphone } from 'lucide-react';
-import { useAuth } from '../lib/auth';
-import AnggotaView from '../components/AnggotaView';
+import { useNavigate } from "react-router-dom";
+import { LogOut, Smartphone } from "lucide-react";
+import { useAuth } from "../lib/auth";
+import AnggotaView from "../components/AnggotaView";
 
 export default function AnggotaPage() {
   const { member, logout } = useAuth();
@@ -9,7 +9,7 @@ export default function AnggotaPage() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -32,7 +32,7 @@ export default function AnggotaPage() {
           >
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Keluar</span>
-            <span className="sm:hidden">{member?.nama.split(' ')[0]}</span>
+            <span className="sm:hidden">{member?.nama.split(" ")[0]}</span>
           </button>
         </div>
       </header>
@@ -42,7 +42,7 @@ export default function AnggotaPage() {
       </main>
 
       <footer className="bg-[#FAF9F8] border-t border-[#E4E4E4] text-center py-4 text-[11px] text-[#9CA1A8] font-medium">
-        &copy; 2026 RantaiRenteng · Koperasi Desa Merah Putih
+        &copy; 2026 RantaiRenteng by Calon Manager Merah Putih
       </footer>
     </div>
   );

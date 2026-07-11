@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import { useCallback, useEffect, useState } from "react";
+import { motion } from "motion/react";
 import {
   Home,
   PiggyBank,
@@ -14,14 +14,14 @@ import {
   ExternalLink,
   Loader2,
   ShieldCheck,
-} from 'lucide-react';
-import { useAuth } from '../lib/auth';
-import { api, ApiError, DEMO_GROUP_ID } from '../lib/api';
-import { formatIdr, shortAddress } from '../lib/format';
-import type { Group, Loan, SavingJenis, SavingTransaction } from '../types';
+} from "lucide-react";
+import { useAuth } from "../lib/auth";
+import { api, ApiError, DEMO_GROUP_ID } from "../lib/api";
+import { formatIdr, shortAddress } from "../lib/format";
+import type { Group, Loan, SavingJenis, SavingTransaction } from "../types";
 
-type Tab = 'beranda' | 'simpan' | 'grup' | 'pinjaman' | 'profil';
-type Flash = { type: 'success' | 'error' | 'info'; msg: string } | null;
+type Tab = "beranda" | "simpan" | "grup" | "pinjaman" | "profil";
+type Flash = { type: "success" | "error" | "info"; msg: string } | null;
 
 interface QrisConfig {
   title: string;
@@ -29,15 +29,15 @@ interface QrisConfig {
   onConfirm: () => void | Promise<void>;
 }
 
-const flagDot: Record<Loan['flagAi'], string> = {
-  HIJAU: 'bg-[#548235]',
-  KUNING: 'bg-[#C55A11]',
-  MERAH: 'bg-[#C0392B]',
+const flagDot: Record<Loan["flagAi"], string> = {
+  HIJAU: "bg-[#548235]",
+  KUNING: "bg-[#C55A11]",
+  MERAH: "bg-[#C0392B]",
 };
 
 export default function AnggotaView() {
   const { member, refreshMember } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('beranda');
+  const [activeTab, setActiveTab] = useState<Tab>("beranda");
 
   const [group, setGroup] = useState<Group | null>(null);
   const [savings, setSavings] = useState<SavingTransaction[]>([]);
@@ -50,14 +50,16 @@ export default function AnggotaView() {
   const [qris, setQris] = useState<QrisConfig | null>(null);
 
   // Savings form
-  const [saveType, setSaveType] = useState<'Wajib' | 'Sukarela'>('Wajib');
-  const [saveAmount, setSaveAmount] = useState('50000');
+  const [saveType, setSaveType] = useState<"Wajib" | "Sukarela">("Wajib");
+  const [saveAmount, setSaveAmount] = useState("50000");
 
   // Loan form
-  const [loanAmount, setLoanAmount] = useState('3000000');
-  const [loanPurpose, setLoanPurpose] = useState('Membeli stok dagangan sembako');
-  const [loanTenor, setLoanTenor] = useState('6');
-  const [sanggahText, setSanggahText] = useState('');
+  const [loanAmount, setLoanAmount] = useState("3000000");
+  const [loanPurpose, setLoanPurpose] = useState(
+    "Membeli stok dagangan sembako",
+  );
+  const [loanTenor, setLoanTenor] = useState("6");
+  const [sanggahText, setSanggahText] = useState("");
   const [showSanggah, setShowSanggah] = useState(false);
 
   const notify = useCallback((f: Flash) => {
@@ -73,8 +75,8 @@ export default function AnggotaView() {
         api.listSavings(member.id),
         api.getGroup(DEMO_GROUP_ID),
       ]);
-      if (sv.status === 'fulfilled') setSavings(sv.value);
-      if (grp.status === 'fulfilled') setGroup(grp.value);
+      if (sv.status === "fulfilled") setSavings(sv.value);
+      if (grp.status === "fulfilled") setGroup(grp.value);
     } catch {
       /* non-fatal for the mobile surface */
     }
@@ -104,7 +106,7 @@ export default function AnggotaView() {
     e.preventDefault();
     const amount = Number(saveAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      notify({ type: 'error', msg: 'Nominal simpanan tidak valid.' });
+      notify({ type: "error", msg: "Nominal simpanan tidak valid." });
       return;
     }
     setQris({
@@ -118,18 +120,21 @@ export default function AnggotaView() {
             memberId: member.id,
             jenis,
             nominal: amount,
-            metode: 'QRIS',
+            metode: "QRIS",
           });
           setSavings((prev) => [saving, ...prev]);
           await refreshMe();
           notify({
-            type: 'success',
+            type: "success",
             msg: `Simpanan ${saveType} ${formatIdr(amount)} tercatat di ledger.`,
           });
         } catch (err) {
           notify({
-            type: 'error',
-            msg: err instanceof ApiError ? err.message : 'Gagal menyetor simpanan.',
+            type: "error",
+            msg:
+              err instanceof ApiError
+                ? err.message
+                : "Gagal menyetor simpanan.",
           });
         } finally {
           setBusy(false);
@@ -145,13 +150,13 @@ export default function AnggotaView() {
     const nominal = Number(loanAmount);
     const tenor = Number(loanTenor);
     if (!Number.isFinite(nominal) || nominal <= 0) {
-      notify({ type: 'error', msg: 'Nominal pinjaman tidak valid.' });
+      notify({ type: "error", msg: "Nominal pinjaman tidak valid." });
       return;
     }
     if (!group) {
       notify({
-        type: 'error',
-        msg: 'Konteks kelompok belum termuat. Coba lagi sesaat.',
+        type: "error",
+        msg: "Konteks kelompok belum termuat. Coba lagi sesaat.",
       });
       return;
     }
@@ -167,13 +172,14 @@ export default function AnggotaView() {
       setAppliedLoan(loan);
       setShowSanggah(false);
       notify({
-        type: loan.flagAi === 'MERAH' ? 'error' : 'success',
+        type: loan.flagAi === "MERAH" ? "error" : "success",
         msg: `Pengajuan terkirim. Skrining AI: ${loan.flagAi} (skor ${loan.skorAi}).`,
       });
     } catch (err) {
       notify({
-        type: 'error',
-        msg: err instanceof ApiError ? err.message : 'Gagal mengajukan pinjaman.',
+        type: "error",
+        msg:
+          err instanceof ApiError ? err.message : "Gagal mengajukan pinjaman.",
       });
     } finally {
       setBusy(false);
@@ -183,20 +189,24 @@ export default function AnggotaView() {
   const handleSanggah = async () => {
     if (!appliedLoan) return;
     if (!sanggahText.trim()) {
-      notify({ type: 'error', msg: 'Harap isi alasan sanggahan.' });
+      notify({ type: "error", msg: "Harap isi alasan sanggahan." });
       return;
     }
     setBusy(true);
     try {
       const updated = await api.sanggahLoan(appliedLoan.id, sanggahText.trim());
       setAppliedLoan(updated);
-      setSanggahText('');
+      setSanggahText("");
       setShowSanggah(false);
-      notify({ type: 'success', msg: 'Sanggahan terekam. Pengurus akan meninjau.' });
+      notify({
+        type: "success",
+        msg: "Sanggahan terekam. Pengurus akan meninjau.",
+      });
     } catch (err) {
       notify({
-        type: 'error',
-        msg: err instanceof ApiError ? err.message : 'Gagal mengirim sanggahan.',
+        type: "error",
+        msg:
+          err instanceof ApiError ? err.message : "Gagal mengirim sanggahan.",
       });
     } finally {
       setBusy(false);
@@ -204,44 +214,33 @@ export default function AnggotaView() {
   };
 
   const initials = member.nama
-    .split(' ')
+    .split(" ")
     .map((n) => n[0])
-    .join('')
+    .join("")
     .slice(0, 2)
     .toUpperCase();
 
   return (
-    <div className="w-full max-w-[390px] mx-auto bg-[#1E1F21] rounded-[55px] p-3 shadow-[0_24px_50px_rgba(30,31,33,0.12)] border-[10px] border-[#1E1F21] relative flex flex-col overflow-hidden h-[860px] text-[#1E1F21]">
-      {/* Notch */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-6 bg-[#1E1F21] rounded-full z-40" />
-
-      {/* Status bar */}
-      <div className="bg-gradient-to-r from-[#F06A6A] to-[#E5544F] text-white pt-5 pb-2.5 px-6 flex justify-between items-center text-[10px] font-semibold tracking-wider shrink-0 z-30 select-none">
-        <span>09:41</span>
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-end gap-[1.5px] h-2.5">
-            <div className="w-[2px] h-[3px] bg-white rounded-sm" />
-            <div className="w-[2px] h-[5px] bg-white rounded-sm" />
-            <div className="w-[2px] h-[7px] bg-white rounded-sm" />
-            <div className="w-[2px] h-[9px] bg-white rounded-sm" />
-          </div>
-          <div className="w-5 h-2.5 border border-white/60 rounded-[3px] p-[1px] flex items-center">
-            <div className="h-full w-4/5 bg-white rounded-[1.5px]" />
-          </div>
-        </div>
-      </div>
-
+    <div className="w-full max-w-[390px] mx-auto bg-[#1E1F21] p-1 shadow-[0_24px_50px_rgba(30,31,33,0.12)] border-1 border-[#1E1F21] relative flex flex-col overflow-hidden h-[860px] text-[#1E1F21]">
       {/* Coral header */}
       <div className="bg-gradient-to-br from-[#F06A6A] via-[#E5544F] to-[#C83E3E] text-white pt-5 pb-6 px-5 shrink-0 z-20 relative overflow-hidden select-none">
         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
           <motion.div
-            animate={{ x: [0, 50, -30, 0], y: [0, -30, 40, 0], scale: [1, 1.25, 0.85, 1] }}
-            transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+            animate={{
+              x: [0, 50, -30, 0],
+              y: [0, -30, 40, 0],
+              scale: [1, 1.25, 0.85, 1],
+            }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -top-12 -left-12 w-36 h-36 bg-amber-300 rounded-full blur-3xl opacity-30"
           />
           <motion.div
-            animate={{ x: [0, -40, 50, 0], y: [0, 40, -30, 0], scale: [1, 0.8, 1.3, 1] }}
-            transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+            animate={{
+              x: [0, -40, 50, 0],
+              y: [0, 40, -30, 0],
+              scale: [1, 0.8, 1.3, 1],
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -bottom-16 -right-16 w-44 h-44 bg-rose-300 rounded-full blur-3xl opacity-40"
           />
         </div>
@@ -273,7 +272,8 @@ export default function AnggotaView() {
             </span>
             {member.walletAddress && (
               <span className="inline-flex items-center gap-1 text-[10px] text-red-50 font-mono bg-white/10 px-2 py-0.5 rounded-full">
-                <Wallet className="w-3 h-3" /> {shortAddress(member.walletAddress)}
+                <Wallet className="w-3 h-3" />{" "}
+                {shortAddress(member.walletAddress)}
               </span>
             )}
           </div>
@@ -284,8 +284,8 @@ export default function AnggotaView() {
       <div className="bg-[#FAF9F8] border-b border-[#E4E4E4] py-2 px-3 text-[9px] text-[#6D6E6F] font-medium flex items-center gap-1.5 shrink-0 z-20">
         <AlertCircle className="w-3.5 h-3.5 text-[#F06A6A] shrink-0" />
         <span className="leading-tight">
-          Keputusan akhir tetap mufakat musyawarah grup & pengurus. AI adalah asisten
-          EWS.
+          Keputusan akhir tetap mufakat musyawarah grup & pengurus. AI adalah
+          asisten EWS.
         </span>
       </div>
 
@@ -293,11 +293,11 @@ export default function AnggotaView() {
       {flash && (
         <div
           className={`px-3 py-2 text-[11px] font-semibold shrink-0 z-20 flex items-center gap-1.5 ${
-            flash.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border-b border-emerald-200'
-              : flash.type === 'error'
-                ? 'bg-red-50 text-red-800 border-b border-red-200'
-                : 'bg-amber-50 text-amber-800 border-b border-amber-200'
+            flash.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-b border-emerald-200"
+              : flash.type === "error"
+                ? "bg-red-50 text-red-800 border-b border-red-200"
+                : "bg-amber-50 text-amber-800 border-b border-amber-200"
           }`}
         >
           <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {flash.msg}
@@ -306,18 +306,19 @@ export default function AnggotaView() {
 
       {/* Scroll body */}
       <div className="flex-1 overflow-y-auto bg-[#FAF9F8] p-4">
-        {member.statusKyc === 'Requested' && (
+        {member.statusKyc === "Requested" && (
           <div className="bg-amber-100 border border-amber-300 rounded-xl p-3 text-xs text-amber-900 mb-4 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[#C55A11] shrink-0 mt-0.5" />
             <div>
-              <strong>Akun e-KYC Sedang Ditinjau.</strong> Pengurus koperasi harus
-              menyetujui pendaftaran Anda untuk mengaktifkan seluruh fitur.
+              <strong>Akun e-KYC Sedang Ditinjau.</strong> Pengurus koperasi
+              harus menyetujui pendaftaran Anda untuk mengaktifkan seluruh
+              fitur.
             </div>
           </div>
         )}
 
         {/* TAB BERANDA */}
-        {activeTab === 'beranda' && (
+        {activeTab === "beranda" && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -349,7 +350,8 @@ export default function AnggotaView() {
             {/* Wallet card (Flow ①) */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm space-y-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Dompet On-Chain
+                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Dompet
+                On-Chain
               </span>
               {member.walletAddress ? (
                 <div className="flex items-center justify-between bg-[#FAF9F8] border border-[#E4E4E4] rounded-xl px-3 py-2">
@@ -367,9 +369,17 @@ export default function AnggotaView() {
             {/* Quick actions */}
             <div className="flex justify-around items-center bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
               {[
-                { tab: 'simpan' as Tab, icon: PiggyBank, label: 'Setor Simpanan' },
-                { tab: 'pinjaman' as Tab, icon: CreditCard, label: 'Ajukan Pinjaman' },
-                { tab: 'grup' as Tab, icon: Users, label: 'Kelompok Kami' },
+                {
+                  tab: "simpan" as Tab,
+                  icon: PiggyBank,
+                  label: "Setor Simpanan",
+                },
+                {
+                  tab: "pinjaman" as Tab,
+                  icon: CreditCard,
+                  label: "Ajukan Pinjaman",
+                },
+                { tab: "grup" as Tab, icon: Users, label: "Kelompok Kami" },
               ].map(({ tab, icon: Icon, label }) => (
                 <button
                   key={tab}
@@ -392,9 +402,9 @@ export default function AnggotaView() {
                 Rincian Simpanan
               </h4>
               {[
-                { label: 'Simpanan Pokok', value: member.simpananPokok },
-                { label: 'Simpanan Wajib', value: member.simpananWajib },
-                { label: 'Simpanan Sukarela', value: member.simpananSukarela },
+                { label: "Simpanan Pokok", value: member.simpananPokok },
+                { label: "Simpanan Wajib", value: member.simpananWajib },
+                { label: "Simpanan Sukarela", value: member.simpananSukarela },
               ].map((row) => (
                 <div
                   key={row.label}
@@ -430,7 +440,7 @@ export default function AnggotaView() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setActiveTab('pinjaman')}
+                  onClick={() => setActiveTab("pinjaman")}
                   className="text-[10px] font-black text-[#F06A6A] flex items-center gap-0.5"
                 >
                   Lihat hasil skrining AI <ChevronRight className="w-3 h-3" />
@@ -441,7 +451,7 @@ export default function AnggotaView() {
         )}
 
         {/* TAB SIMPAN (Flow ④) */}
-        {activeTab === 'simpan' && (
+        {activeTab === "simpan" && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -470,13 +480,13 @@ export default function AnggotaView() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSaveType('Wajib');
-                      setSaveAmount('50000');
+                      setSaveType("Wajib");
+                      setSaveAmount("50000");
                     }}
                     className={`p-2.5 rounded-lg text-xs font-bold border transition-all ${
-                      saveType === 'Wajib'
-                        ? 'border-[#F06A6A] bg-[#FCE8E6] text-[#F06A6A]'
-                        : 'border-slate-200 bg-white text-slate-600'
+                      saveType === "Wajib"
+                        ? "border-[#F06A6A] bg-[#FCE8E6] text-[#F06A6A]"
+                        : "border-slate-200 bg-white text-slate-600"
                     }`}
                   >
                     Wajib (Rp50.000)
@@ -484,13 +494,13 @@ export default function AnggotaView() {
                   <button
                     type="button"
                     onClick={() => {
-                      setSaveType('Sukarela');
-                      setSaveAmount('100000');
+                      setSaveType("Sukarela");
+                      setSaveAmount("100000");
                     }}
                     className={`p-2.5 rounded-lg text-xs font-bold border transition-all ${
-                      saveType === 'Sukarela'
-                        ? 'border-[#F06A6A] bg-[#FCE8E6] text-[#F06A6A]'
-                        : 'border-slate-200 bg-white text-slate-600'
+                      saveType === "Sukarela"
+                        ? "border-[#F06A6A] bg-[#FCE8E6] text-[#F06A6A]"
+                        : "border-slate-200 bg-white text-slate-600"
                     }`}
                   >
                     Sukarela (Bebas)
@@ -506,7 +516,7 @@ export default function AnggotaView() {
                   type="number"
                   value={saveAmount}
                   onChange={(e) => setSaveAmount(e.target.value)}
-                  disabled={saveType === 'Wajib'}
+                  disabled={saveType === "Wajib"}
                   className="w-full text-sm font-bold border border-slate-200 rounded-lg px-3 py-2 bg-slate-50 outline-none disabled:opacity-70"
                 />
               </div>
@@ -539,7 +549,9 @@ export default function AnggotaView() {
                       <span className="text-[11px] font-bold text-slate-800 block">
                         Simpanan {s.jenis}
                       </span>
-                      <span className="text-[9px] text-slate-400">{s.metode}</span>
+                      <span className="text-[9px] text-slate-400">
+                        {s.metode}
+                      </span>
                     </div>
                     <div className="text-right">
                       <span className="text-[11px] font-black text-[#1E1F21] block">
@@ -564,7 +576,7 @@ export default function AnggotaView() {
         )}
 
         {/* TAB GRUP (read-only) */}
-        {activeTab === 'grup' && (
+        {activeTab === "grup" && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -576,13 +588,17 @@ export default function AnggotaView() {
               <h3 className="text-base font-bold text-slate-800 mt-2">
                 Kelompok Tanggung Renteng
               </h3>
-              <p className="text-xs text-slate-500">Agunan sosial saling menjamin</p>
+              <p className="text-xs text-slate-500">
+                Agunan sosial saling menjamin
+              </p>
             </div>
 
             {group ? (
               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-bold text-slate-800">{group.nama}</h4>
+                  <h4 className="text-sm font-bold text-slate-800">
+                    {group.nama}
+                  </h4>
                   <span className="text-[10px] font-bold text-[#548235] bg-green-50 border border-green-100 px-2 py-0.5 rounded-full uppercase">
                     Reputasi: {group.reputasiKomunitas}
                   </span>
@@ -604,25 +620,33 @@ export default function AnggotaView() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Plafon</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Plafon
+                    </span>
                     <strong className="text-[#1E1F21]">
                       {formatIdr(group.plafonMaks)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Kehadiran</span>
-                    <strong className="text-[#548235]">{group.kehadiranRate}%</strong>
+                    <span className="text-[10px] text-slate-400 block">
+                      Kehadiran
+                    </span>
+                    <strong className="text-[#548235]">
+                      {group.kehadiranRate}%
+                    </strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Kas Sosial</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      Kas Sosial
+                    </span>
                     <strong className="text-[#1E1F21]">
                       {formatIdr(group.kasSosial)}
                     </strong>
                   </div>
                 </div>
                 <div className="bg-[#FAF9F8] border border-[#E4E4E4] p-3 rounded-xl text-[11px] text-slate-600 leading-relaxed">
-                  "Kami berikrar saling membantu cicilan dan bersedia bertanggung
-                  renteng jika rekan tertimpa musibah."
+                  "Kami berikrar saling membantu cicilan dan bersedia
+                  bertanggung renteng jika rekan tertimpa musibah."
                 </div>
               </div>
             ) : (
@@ -634,7 +658,7 @@ export default function AnggotaView() {
         )}
 
         {/* TAB PINJAMAN (Flow ②) */}
-        {activeTab === 'pinjaman' && (
+        {activeTab === "pinjaman" && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -676,7 +700,9 @@ export default function AnggotaView() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Tenor</span>
-                    <span className="text-slate-800">{appliedLoan.tenor} bulan</span>
+                    <span className="text-slate-800">
+                      {appliedLoan.tenor} bulan
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-400">Angsuran/bln</span>
@@ -712,49 +738,52 @@ export default function AnggotaView() {
                     rel="noreferrer"
                     className="text-[11px] font-bold text-[#F06A6A] inline-flex items-center gap-1"
                   >
-                    Lihat transaksi on-chain <ExternalLink className="w-3 h-3" />
+                    Lihat transaksi on-chain{" "}
+                    <ExternalLink className="w-3 h-3" />
                   </a>
                 )}
 
                 {/* Sanggah — most relevant when MERAH */}
-                {appliedLoan.status === 'Diajukan' && !appliedLoan.isSanggah && (
-                  <div className="border-t border-slate-100 pt-3 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-[#C55A11] uppercase">
-                        Flag AI keliru?
-                      </span>
-                      <button
-                        onClick={() => setShowSanggah((v) => !v)}
-                        className="text-[10px] font-extrabold text-[#F06A6A] underline"
-                      >
-                        {showSanggah ? 'Batal' : 'Ajukan Hak Sanggah'}
-                      </button>
-                    </div>
-                    {showSanggah && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2 text-xs">
-                        <textarea
-                          rows={3}
-                          value={sanggahText}
-                          onChange={(e) => setSanggahText(e.target.value)}
-                          placeholder="Contoh: Nama saya tertukar dengan warga lain, saya tidak punya tunggakan..."
-                          className="w-full border border-slate-300 rounded p-1.5 bg-white text-xs outline-none"
-                        />
+                {appliedLoan.status === "Diajukan" &&
+                  !appliedLoan.isSanggah && (
+                    <div className="border-t border-slate-100 pt-3 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-[#C55A11] uppercase">
+                          Flag AI keliru?
+                        </span>
                         <button
-                          onClick={handleSanggah}
-                          disabled={busy}
-                          className="w-full bg-[#F06A6A] hover:bg-[#E5544F] disabled:opacity-60 text-white font-bold py-1.5 rounded"
+                          onClick={() => setShowSanggah((v) => !v)}
+                          className="text-[10px] font-extrabold text-[#F06A6A] underline"
                         >
-                          Kirim Sanggahan ke Pengurus
+                          {showSanggah ? "Batal" : "Ajukan Hak Sanggah"}
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {showSanggah && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2 text-xs">
+                          <textarea
+                            rows={3}
+                            value={sanggahText}
+                            onChange={(e) => setSanggahText(e.target.value)}
+                            placeholder="Contoh: Nama saya tertukar dengan warga lain, saya tidak punya tunggakan..."
+                            className="w-full border border-slate-300 rounded p-1.5 bg-white text-xs outline-none"
+                          />
+                          <button
+                            onClick={handleSanggah}
+                            disabled={busy}
+                            className="w-full bg-[#F06A6A] hover:bg-[#E5544F] disabled:opacity-60 text-white font-bold py-1.5 rounded"
+                          >
+                            Kirim Sanggahan ke Pengurus
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 {appliedLoan.isSanggah && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[10px] text-blue-900">
-                    <strong>Sanggahan Terdaftar:</strong> "{appliedLoan.sanggahAlasan}"
-                    — pengajuan ditangguhkan untuk verifikasi manual pengurus.
+                    <strong>Sanggahan Terdaftar:</strong> "
+                    {appliedLoan.sanggahAlasan}" — pengajuan ditangguhkan untuk
+                    verifikasi manual pengurus.
                   </div>
                 )}
 
@@ -786,7 +815,8 @@ export default function AnggotaView() {
                   />
                   {group && (
                     <span className="text-[10px] text-slate-400 mt-1 block">
-                      Plafon kelompok: <strong>{formatIdr(group.plafonMaks)}</strong>
+                      Plafon kelompok:{" "}
+                      <strong>{formatIdr(group.plafonMaks)}</strong>
                     </span>
                   )}
                 </div>
@@ -828,7 +858,7 @@ export default function AnggotaView() {
                       <Loader2 className="w-4 h-4 animate-spin" /> Menyaring…
                     </>
                   ) : (
-                    'Ajukan & Jalankan Skrining AI'
+                    "Ajukan & Jalankan Skrining AI"
                   )}
                 </button>
               </form>
@@ -836,18 +866,19 @@ export default function AnggotaView() {
 
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-[#C55A11] space-y-1">
               <h5 className="font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 shrink-0" /> Transparansi Skrining
+                <Sparkles className="w-3.5 h-3.5 shrink-0" /> Transparansi
+                Skrining
               </h5>
               <p className="text-slate-600 leading-relaxed">
-                Kami menilai riwayat kelompok dan ketaatan tabungan Anda — bukan data
-                ponsel pribadi. Anda berhak menyanggah bila flag AI keliru.
+                Kami menilai riwayat kelompok dan ketaatan tabungan Anda — bukan
+                data ponsel pribadi. Anda berhak menyanggah bila flag AI keliru.
               </p>
             </div>
           </motion.div>
         )}
 
         {/* TAB PROFIL (Flow ①) */}
-        {activeTab === 'profil' && (
+        {activeTab === "profil" && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -862,15 +893,15 @@ export default function AnggotaView() {
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
                 <p className="text-slate-400">Status Akun</p>
                 <strong className="text-slate-800 text-sm flex items-center gap-1.5 mt-0.5">
-                  {member.statusKyc === 'Approved' ? (
+                  {member.statusKyc === "Approved" ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-[#548235]" /> Aktif (e-KYC
-                      Terverifikasi)
+                      <CheckCircle2 className="w-4 h-4 text-[#548235]" /> Aktif
+                      (e-KYC Terverifikasi)
                     </>
-                  ) : member.statusKyc === 'Requested' ? (
+                  ) : member.statusKyc === "Requested" ? (
                     <>
-                      <AlertCircle className="w-4 h-4 text-[#C55A11]" /> Menunggu
-                      Persetujuan
+                      <AlertCircle className="w-4 h-4 text-[#C55A11]" />{" "}
+                      Menunggu Persetujuan
                     </>
                   ) : (
                     <>
@@ -882,12 +913,12 @@ export default function AnggotaView() {
 
               <div className="space-y-2 text-xs">
                 {[
-                  ['Nama Lengkap', member.nama],
-                  ['NIK', member.nik],
-                  ['No. HP', member.noHp],
-                  ['Pekerjaan', member.pekerjaan],
-                  ['Alamat', member.alamat],
-                  ['Peran', member.peran],
+                  ["Nama Lengkap", member.nama],
+                  ["NIK", member.nik],
+                  ["No. HP", member.noHp],
+                  ["Pekerjaan", member.pekerjaan],
+                  ["Alamat", member.alamat],
+                  ["Peran", member.peran],
                 ].map(([k, v]) => (
                   <div
                     key={k}
@@ -906,13 +937,13 @@ export default function AnggotaView() {
                   <Wallet className="w-3.5 h-3.5" /> Alamat Dompet On-Chain
                 </span>
                 <p className="font-mono text-[11px] text-[#1E1F21] break-all">
-                  {member.walletAddress ?? 'Belum diterbitkan (menunggu e-KYC)'}
+                  {member.walletAddress ?? "Belum diterbitkan (menunggu e-KYC)"}
                 </p>
               </div>
 
               <div className="flex items-center gap-2 text-[10px] text-[#548235] font-bold">
-                <ShieldCheck className="w-4 h-4" /> Data terenkripsi & mengikuti UU PDP
-                27/2022.
+                <ShieldCheck className="w-4 h-4" /> Data terenkripsi & mengikuti
+                UU PDP 27/2022.
               </div>
             </div>
           </motion.div>
@@ -923,11 +954,11 @@ export default function AnggotaView() {
       <div className="bg-white text-slate-600 py-2 border-t border-slate-200 flex justify-around items-center shrink-0 z-20 select-none">
         {(
           [
-            ['beranda', Home, 'Beranda'],
-            ['simpan', PiggyBank, 'Simpan'],
-            ['grup', Users, 'Grup'],
-            ['pinjaman', CreditCard, 'Pinjaman'],
-            ['profil', User, 'Profil'],
+            ["beranda", Home, "Beranda"],
+            ["simpan", PiggyBank, "Simpan"],
+            ["grup", Users, "Grup"],
+            ["pinjaman", CreditCard, "Pinjaman"],
+            ["profil", User, "Profil"],
           ] as [Tab, typeof Home, string][]
         ).map(([tab, Icon, label]) => (
           <button
@@ -935,8 +966,8 @@ export default function AnggotaView() {
             onClick={() => setActiveTab(tab)}
             className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
               activeTab === tab
-                ? 'text-[#F06A6A] font-extrabold scale-105'
-                : 'text-slate-400 hover:text-[#1E1F21]'
+                ? "text-[#F06A6A] font-extrabold scale-105"
+                : "text-slate-400 hover:text-[#1E1F21]"
             }`}
           >
             <Icon className="w-4.5 h-4.5" />
@@ -946,9 +977,9 @@ export default function AnggotaView() {
       </div>
 
       {/* Home indicator */}
-      <div className="bg-[#1E1F21] pt-2 pb-2 flex justify-center shrink-0 z-20">
+      {/* <div className="bg-[#1E1F21] pt-2 pb-2 flex justify-center shrink-0 z-20">
         <div className="w-24 h-1 bg-white/40 rounded-full" />
-      </div>
+      </div> */}
 
       {/* QRIS mock modal */}
       {qris && (
@@ -972,13 +1003,13 @@ export default function AnggotaView() {
               {Array.from({ length: 16 }).map((_, i) => (
                 <div
                   key={i}
-                  className={`rounded-sm ${i % 3 === 0 || i % 5 === 0 ? 'bg-[#F06A6A]' : 'bg-white'}`}
+                  className={`rounded-sm ${i % 3 === 0 || i % 5 === 0 ? "bg-[#F06A6A]" : "bg-white"}`}
                 />
               ))}
             </div>
             <div className="text-[10px] text-slate-400 font-medium px-2 leading-relaxed">
-              Scan otomatis terhubung ke immutable ledger. Bebas biaya admin (gas
-              relayer).
+              Scan otomatis terhubung ke immutable ledger. Bebas biaya admin
+              (gas relayer).
             </div>
             <div className="flex gap-2 mt-4">
               <button
@@ -993,7 +1024,11 @@ export default function AnggotaView() {
                 disabled={busy}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black py-2 rounded-xl text-[10px] uppercase tracking-wide flex items-center justify-center gap-1"
               >
-                {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Bayar QRIS'}
+                {busy ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  "Bayar QRIS"
+                )}
               </button>
             </div>
           </div>

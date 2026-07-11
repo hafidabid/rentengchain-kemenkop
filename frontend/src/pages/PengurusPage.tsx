@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import { LogOut, Users } from 'lucide-react';
-import { useAuth } from '../lib/auth';
-import PengurusView from '../components/PengurusView';
+import { useNavigate } from "react-router-dom";
+import { LogOut, Users } from "lucide-react";
+import { useAuth } from "../lib/auth";
+import PengurusView from "../components/PengurusView";
 
 export default function PengurusPage() {
   const { member, logout } = useAuth();
@@ -9,7 +9,7 @@ export default function PengurusPage() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login', { replace: true });
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -48,7 +48,7 @@ export default function PengurusPage() {
       </main>
 
       <footer className="bg-[#FAF9F8] border-t border-[#E4E4E4] text-center py-4 text-[11px] text-[#9CA1A8] font-medium">
-        &copy; 2026 RantaiRenteng · Koperasi Desa Merah Putih
+        &copy; 2026 RantaiRenteng by Calon Manager Merah Putih
       </footer>
     </div>
   );
