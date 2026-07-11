@@ -58,5 +58,19 @@ npm run test:e2e     # integration; needs a migrated+seeded DB via DATABASE_URL
 | `src/members` | member-registry | `GET /api/members`, `/members/me`, `/members/:id` |
 | `src/groups` | group-management | `GET /api/groups`, `/groups/:id` |
 | `src/audit` | audit-log | `GET /api/audit-logs` |
+| `src/kyc` | Flow ① onboarding + KTP upload + temp-password | `POST /api/kyc/{submit,approve/:id,reject/:id,upload-ktp,:id/reset-password}` |
+| `src/loans` | Flow ② lending + AI EWS + appeals + decision notes | `POST /api/loans/{apply,sanggah/:id,approve/:id,reject/:id}`, `GET /api/loans[/:id[/decisions]]` |
+| `src/savings` | Flow ④ savings | `POST /api/savings`, `GET /api/savings` |
+| `src/renteng` | Flow ③ bailout + renteng_events | `POST /api/renteng/:loanId/{bailout,repay-talangan}` |
+| `src/members` | member-registry + detail | `GET /api/members[/:id[/detail]]`, `/members/me` |
+| `src/assistant` | Gemini koperasi chatbot (Pengurus) | `POST /api/assistant/chat`, `GET /api/assistant/snapshot` |
+| `src/reports` | e-RAT aggregates + XLSX (Pengurus) | `GET /api/reports/e-rat[/export.xlsx]` |
+| `src/storage` | S3/MinIO KTP object storage | — |
+| `src/web3` | viem relayer + custodial wallets | — |
+| `src/cache` | Redis-optional cache (assistant snapshot) | — |
 | `src/prisma` | Prisma client (global) | — |
 | `src/common` | serializers/DTOs | — |
+
+**Optional infra**: `GEMINI_API_KEY` (assistant/EWS — degrades to fallback when unset),
+`REDIS_URL` (assistant snapshot cache — in-memory fallback), `S3_*` (KTP — 503 when unset).
+All are graceful; the app boots without them.
