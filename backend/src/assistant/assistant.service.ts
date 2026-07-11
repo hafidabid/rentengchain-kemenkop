@@ -61,23 +61,13 @@ export class AssistantService {
       this.config.get<string>('ASSISTANT_WEB_GROUNDING') === 'true';
 
     try {
-      const ai = await genai.create();
-      const model = genai.model;
-
-      const config: Record<string, unknown> = {
-        systemInstruction: this.systemInstruction(snapshot),
-      };
-      if (grounded) {
-        config.tools = [{ googleSearch: {} }];
-      }
-
-      const response = await ai.models.generateContent({
-        model,
-        contents: this.mapHistory(history),
-        config,
-      });
-
-      const reply = this.extractText(response).trim();
+      const reply = (
+        await genai.generate({
+          systemInstruction: this.systemInstruction(snapshot),
+          contents: this.mapHistory(history),
+          tools: grounded ? [{ googleSearch: {} }] : undefined,
+        })
+      ).trim();
       if (!reply) {
         this.logger.warn('assistant_fallback: Gemini returned empty text');
         return this.degrade(snapshot, snapshotAt);
@@ -123,24 +113,6 @@ export class AssistantService {
       role: turn.role === 'model' ? 'model' : 'user',
       parts: [{ text: String(turn.text ?? '') }],
     }));
-  }
-
-  /** Pull text out of a @google/genai response defensively. */
-  private extractText(r: any): string {
-    if (!r) return '';
-    if (typeof r.text === 'string') return r.text;
-    if (typeof r.text === 'function') {
-      try {
-        return String(r.text());
-      } catch {
-        /* fall through */
-      }
-    }
-    const parts = r?.candidates?.[0]?.content?.parts;
-    if (Array.isArray(parts)) {
-      return parts.map((p: any) => p?.text ?? '').join('');
-    }
-    return '';
   }
 
   /** Deterministic human summary of the key aggregates (grounding fallback). */

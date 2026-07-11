@@ -47,6 +47,12 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-rantai}:${DB_PASSWORD:-rantai_prod_pw}@db:5432/${DB_NAME:-rantairenteng}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       REDIS_URL: redis://redis:6379
+      # Gemini via Vertex AI — token injected by deploy/{init,update}.sh (gcloud).
+      GEMINI_USE_VERTEX: 'true'
+      GOOGLE_CLOUD_PROJECT: ${PROJECT_ID:-kemenkop-hackathon-2026-1a00}
+      GOOGLE_CLOUD_LOCATION: ${REGION:-global}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GOOGLE_ACCESS_TOKEN: ${GOOGLE_ACCESS_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy

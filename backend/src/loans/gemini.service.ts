@@ -44,13 +44,12 @@ export class GeminiService {
     }
 
     try {
-      const ai = await genai.create();
-      const model = genai.model;
-      const r = await ai.models.generateContent({
-        model,
-        contents: this.buildPrompt(input),
+      const text = await genai.generate({
+        contents: [
+          { role: 'user', parts: [{ text: this.buildPrompt(input) }] },
+        ],
       });
-      const parsed = this.parseJson(this.extractText(r));
+      const parsed = this.parseJson(text);
       if (!parsed) {
         this.logger.warn('fallback_used: Gemini returned unparseable output');
         return this.fallback(input);
@@ -88,24 +87,6 @@ export class GeminiService {
     ]
       .filter(Boolean)
       .join('\n');
-  }
-
-  /** Pull the text out of a @google/genai response defensively. */
-  private extractText(r: any): string {
-    if (!r) return '';
-    if (typeof r.text === 'string') return r.text;
-    if (typeof r.text === 'function') {
-      try {
-        return String(r.text());
-      } catch {
-        /* fall through */
-      }
-    }
-    const parts = r?.candidates?.[0]?.content?.parts;
-    if (Array.isArray(parts)) {
-      return parts.map((p: any) => p?.text ?? '').join('');
-    }
-    return '';
   }
 
   /** Strip code fences and parse the first {...} block. Returns null on failure. */

@@ -67,6 +67,17 @@ issue_cert() { # $1 domain
 }
 
 # ---- 1) Backend first -------------------------------------------------------
+# Gemini via Vertex: mint a fresh access token for the backend container (no API key).
+export PROJECT_ID="${PROJECT_ID:-kemenkop-hackathon-2026-1a00}"
+export REGION="${REGION:-global}"
+if command -v gcloud >/dev/null 2>&1; then
+  export GOOGLE_ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null || true)"
+  [ -n "${GOOGLE_ACCESS_TOKEN:-}" ] && log "Minted Gemini/Vertex access token ($PROJECT_ID)" \
+    || log "WARN: gcloud could not mint a token — assistant/EWS will degrade until GOOGLE_ACCESS_TOKEN is set"
+else
+  log "WARN: gcloud not found — set GOOGLE_ACCESS_TOKEN (or a service account) for Vertex"
+fi
+
 log "Building + starting database and backend"
 $COMPOSE up -d --build db backend
 

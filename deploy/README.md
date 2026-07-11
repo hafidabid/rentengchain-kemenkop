@@ -48,6 +48,11 @@ deploy` + idempotent seed on start), and reloads nginx. Certificates are left un
 
 ## Notes
 
+- **Gemini (Vertex AI, no API key)**: `init.sh`/`update.sh` mint a token via
+  `gcloud auth print-access-token` and inject it as `GOOGLE_ACCESS_TOKEN` into the backend
+  (project `PROJECT_ID`, region `REGION`, default `global`/`gemini-2.5-flash`). The token
+  lasts ~1h — re-run `update.sh` to refresh, or use a **service account**
+  (`GOOGLE_APPLICATION_CREDENTIALS`) for a long-lived server. Degrades gracefully without one.
 - **CORS**: backend defaults to `CORS_ORIGIN=*` (allow all). Restrict by setting
   `CORS_ORIGIN=https://renteng-chain.talentor.tech` in `backend/.env` and re-running update.
 - **KTP uploads** through nginx are capped at 12 MB (`client_max_body_size`).
