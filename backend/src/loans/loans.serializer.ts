@@ -24,6 +24,7 @@ export interface LoanDto {
   flagAlasan: string[];
   isSanggah: boolean;
   sanggahAlasan: string | null;
+  catatanPengurus: string | null;
   onchainLoanId: string | null;
   txHash: string | null;
   txLink: string | null;
@@ -37,6 +38,28 @@ export interface LoanDtoExtra {
   memberNama?: string;
   groupNama?: string;
   explorerBaseUrl?: string;
+}
+
+/** API shape for one entry in a loan's decision history. */
+export interface LoanDecisionDto {
+  id: string;
+  decision: string;
+  note: string | null;
+  aktor: string;
+  createdAt: Date;
+}
+
+/** Map a Prisma `loanDecision` row to its API shape. */
+export function toLoanDecisionDto(
+  decision: Record<string, any>,
+): LoanDecisionDto {
+  return {
+    id: decision.id,
+    decision: decision.decision,
+    note: decision.note ?? null,
+    aktor: decision.aktor,
+    createdAt: decision.createdAt,
+  };
 }
 
 /** Coerce a Prisma Json `flagAlasan` (array, JSON string, or null) into string[]. */
@@ -81,6 +104,7 @@ export function toLoanDto(
     flagAlasan: toStringArray(loan.flagAlasan),
     isSanggah: loan.isSanggah ?? false,
     sanggahAlasan: loan.sanggahAlasan ?? null,
+    catatanPengurus: loan.catatanPengurus ?? null,
     onchainLoanId,
     txHash,
     txLink: txHash

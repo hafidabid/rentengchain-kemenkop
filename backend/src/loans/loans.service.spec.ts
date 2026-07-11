@@ -15,6 +15,10 @@ describe('LoansService', () => {
       findUnique: jest.Mock;
       findMany: jest.Mock;
     };
+    loanDecision: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+    };
   };
   let gemini: { screen: jest.Mock };
   let contract: { readNextLoanId: jest.Mock; trySubmit: jest.Mock };
@@ -82,6 +86,10 @@ describe('LoansService', () => {
         create: jest.fn(),
         update: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn(),
+      },
+      loanDecision: {
+        create: jest.fn().mockResolvedValue(undefined),
         findMany: jest.fn(),
       },
     };
@@ -338,7 +346,7 @@ describe('LoansService', () => {
       isSanggah: true,
     });
 
-    const result = await service.approve('l-1', pengurus);
+    const result = await service.approve('l-1', {}, pengurus);
 
     expect(prisma.loan.update).toHaveBeenCalledWith({
       where: { id: 'l-1' },
@@ -361,7 +369,7 @@ describe('LoansService', () => {
       onchainLoanId: 7n,
     });
 
-    await service.approve('l-1', pengurus);
+    await service.approve('l-1', {}, pengurus);
     expect(contract.trySubmit).toHaveBeenCalledWith('approveLoan', [7n]);
     expect(
       contract.trySubmit.mock.calls.some((c) => c[0] === 'resolveAppeal'),
@@ -370,7 +378,7 @@ describe('LoansService', () => {
 
   it('approve throws NotFound for unknown loan', async () => {
     prisma.loan.findUnique.mockResolvedValue(null);
-    await expect(service.approve('nope', pengurus)).rejects.toBeInstanceOf(
+    await expect(service.approve('nope', {}, pengurus)).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
@@ -444,5 +452,213 @@ describe('LoansService', () => {
     expect(result.onchainLoanId).toBe('42');
     expect(typeof result.onchainLoanId).toBe('string');
     expect(result.flagAlasan).toEqual(['dorman']);
+  });
+
+  it('findOne includes catatanPengurus in the loan DTO', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      catatanPengurus: 'catatan untuk anggota',
+      member: { nama: 'Ani' },
+      group: { nama: 'Mekar Sari' },
+    });
+    const result = await service.findOne('l-1');
+    expect(result.catatanPengurus).toBe('catatan untuk anggota');
+  });
+
+  // ---------- decision notes + history ----------
+  it('reject with a note sets catatanPengurus and records a Ditunda decision', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      onchainLoanId: 7n,
+      isSanggah: false,
+    });
+    prisma.loan.update.mockResolvedValue({
+      ...createdLoan,
+      status: 'Ditunda',
+      catatanPengurus: 'plafon penuh',
+    });
+
+    const result = await service.reject(
+      'l-1',
+      { note: 'plafon penuh' },
+      pengurus,
+    );
+
+    expect(prisma.loan.update).toHaveBeenCalledWith({
+      where: { id: 'l-1' },
+      data: { status: 'Ditunda', catatanPengurus: 'plafon penuh' },
+    });
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'Ditunda',
+        note: 'plafon penuh',
+        aktor: 'Pengurus',
+      },
+    });
+    expect(result.catatanPengurus).toBe('plafon penuh');
+  });
+
+  it('approve with a note records a Disetujui decision and stores the note', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      onchainLoanId: 7n,
+      isSanggah: false,
+    });
+    prisma.loan.update.mockResolvedValue({
+      ...createdLoan,
+      status: 'Disetujui',
+      catatanPengurus: 'disetujui penuh',
+    });
+
+    const result = await service.approve(
+      'l-1',
+      { note: 'disetujui penuh' },
+      pengurus,
+    );
+
+    expect(prisma.loan.update).toHaveBeenCalledWith({
+      where: { id: 'l-1' },
+      data: { status: 'Disetujui', catatanPengurus: 'disetujui penuh' },
+    });
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'Disetujui',
+        note: 'disetujui penuh',
+        aktor: 'Pengurus',
+      },
+    });
+    expect(result.catatanPengurus).toBe('disetujui penuh');
+  });
+
+  it('approve on an appealed loan also records a SanggahDiterima decision', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      onchainLoanId: 7n,
+      isSanggah: true,
+    });
+    prisma.loan.update.mockResolvedValue({
+      ...createdLoan,
+      status: 'Disetujui',
+      isSanggah: true,
+    });
+
+    await service.approve('l-1', { note: 'diterima' }, pengurus);
+
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'Disetujui',
+        note: 'diterima',
+        aktor: 'Pengurus',
+      },
+    });
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'SanggahDiterima',
+        note: 'diterima',
+        aktor: 'Pengurus',
+      },
+    });
+  });
+
+  it('reject on an appealed loan also records a SanggahDitolak decision', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      onchainLoanId: 7n,
+      isSanggah: true,
+    });
+    prisma.loan.update.mockResolvedValue({
+      ...createdLoan,
+      status: 'Ditunda',
+      isSanggah: true,
+    });
+
+    await service.reject('l-1', { note: 'ditolak' }, pengurus);
+
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'Ditunda',
+        note: 'ditolak',
+        aktor: 'Pengurus',
+      },
+    });
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'SanggahDitolak',
+        note: 'ditolak',
+        aktor: 'Pengurus',
+      },
+    });
+  });
+
+  it('reject without a note leaves catatanPengurus unchanged (no null overwrite)', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...createdLoan,
+      onchainLoanId: 7n,
+      isSanggah: false,
+    });
+    prisma.loan.update.mockResolvedValue({ ...createdLoan, status: 'Ditunda' });
+
+    await service.reject('l-1', {}, pengurus);
+
+    // update carries only the status change, never catatanPengurus: null
+    expect(prisma.loan.update).toHaveBeenCalledWith({
+      where: { id: 'l-1' },
+      data: { status: 'Ditunda' },
+    });
+    // the decision is still recorded, with no note
+    expect(prisma.loanDecision.create).toHaveBeenCalledWith({
+      data: {
+        loanId: 'l-1',
+        decision: 'Ditunda',
+        note: undefined,
+        aktor: 'Pengurus',
+      },
+    });
+  });
+
+  it('findDecisions returns the decision timeline newest-first', async () => {
+    prisma.loan.findUnique.mockResolvedValue(createdLoan);
+    prisma.loanDecision.findMany.mockResolvedValue([
+      {
+        id: 'd-2',
+        loanId: 'l-1',
+        decision: 'Disetujui',
+        note: 'ok',
+        aktor: 'Pengurus',
+        createdAt: new Date('2026-07-11T02:00:00.000Z'),
+      },
+      {
+        id: 'd-1',
+        loanId: 'l-1',
+        decision: 'Ditunda',
+        note: null,
+        aktor: 'Pengurus',
+        createdAt: new Date('2026-07-11T01:00:00.000Z'),
+      },
+    ]);
+
+    const list = await service.findDecisions('l-1');
+
+    expect(prisma.loanDecision.findMany).toHaveBeenCalledWith({
+      where: { loanId: 'l-1' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(list.map((d) => d.id)).toEqual(['d-2', 'd-1']);
+    expect(list[0].decision).toBe('Disetujui');
+    expect(list[0].note).toBe('ok');
+    expect(list[1].note).toBeNull();
+  });
+
+  it('findDecisions throws NotFound for unknown loan', async () => {
+    prisma.loan.findUnique.mockResolvedValue(null);
+    await expect(service.findDecisions('nope')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

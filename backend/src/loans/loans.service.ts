@@ -10,10 +10,17 @@ import { HashingService } from '../web3/hashing.service';
 import { OnchainSyncService } from '../web3/onchain-sync.service';
 import { AIFlag } from '../web3/abis/escrow.abi';
 import { ApplyLoanDto } from './dto/apply-loan.dto';
+import { ApproveDto } from './dto/approve.dto';
 import { RejectDto } from './dto/reject.dto';
 import { SanggahDto } from './dto/sanggah.dto';
 import { GeminiService } from './gemini.service';
-import { LoanDto, LoanDtoExtra, toLoanDto } from './loans.serializer';
+import {
+  LoanDecisionDto,
+  LoanDto,
+  LoanDtoExtra,
+  toLoanDecisionDto,
+  toLoanDto,
+} from './loans.serializer';
 
 const SCREENING_MODEL = 'gemini-2.0-flash';
 const THIRTY_DAYS_SECONDS = 30 * 24 * 3600;
@@ -188,15 +195,53 @@ export class LoansService {
     return this.serialize(updated);
   }
 
+  /**
+   * Persist a decision into the loan's immutable history. When a `note` is given
+   * it is also stored on the loan (`catatanPengurus`) so the owning anggota can
+   * read it; a decision without a note leaves the existing note untouched.
+   */
+  private async recordDecision(
+    loanId: string,
+    isSanggah: boolean,
+    mainDecision: string,
+    sanggahDecision: string,
+    note?: string,
+  ): Promise<void> {
+    await this.prisma.loanDecision.create({
+      data: { loanId, decision: mainDecision, note, aktor: 'Pengurus' },
+    });
+    if (isSanggah) {
+      await this.prisma.loanDecision.create({
+        data: { loanId, decision: sanggahDecision, note, aktor: 'Pengurus' },
+      });
+    }
+  }
+
   /** Pengurus approves a loan; resolves the appeal favourably if one was filed. */
-  async approve(id: string, user?: AuthUser): Promise<LoanDto> {
+  async approve(
+    id: string,
+    dto: ApproveDto = {},
+    user?: AuthUser,
+  ): Promise<LoanDto> {
     const loan = await this.prisma.loan.findUnique({ where: { id } });
     if (!loan) throw new NotFoundException('Loan not found');
 
+    const note = dto?.note;
+    const data: Record<string, any> = { status: LoanStatus.Disetujui };
+    if (note !== undefined && note !== null) data.catatanPengurus = note;
+
     const updated = await this.prisma.loan.update({
       where: { id },
-      data: { status: LoanStatus.Disetujui },
+      data,
     });
+
+    await this.recordDecision(
+      id,
+      loan.isSanggah,
+      'Disetujui',
+      'SanggahDiterima',
+      note,
+    );
 
     let txHash: string | undefined;
     if (loan.onchainLoanId !== null && loan.onchainLoanId !== undefined) {
@@ -227,10 +272,22 @@ export class LoansService {
     const loan = await this.prisma.loan.findUnique({ where: { id } });
     if (!loan) throw new NotFoundException('Loan not found');
 
+    const note = dto?.note;
+    const data: Record<string, any> = { status: LoanStatus.Ditunda };
+    if (note !== undefined && note !== null) data.catatanPengurus = note;
+
     const updated = await this.prisma.loan.update({
       where: { id },
-      data: { status: LoanStatus.Ditunda },
+      data,
     });
+
+    await this.recordDecision(
+      id,
+      loan.isSanggah,
+      'Ditunda',
+      'SanggahDitolak',
+      note,
+    );
 
     let txHash: string | undefined;
     if (loan.onchainLoanId !== null && loan.onchainLoanId !== undefined) {
@@ -286,5 +343,17 @@ export class LoansService {
       memberNama: loan.member?.nama,
       groupNama: loan.group?.nama,
     });
+  }
+
+  /** Pengurus decision timeline for a loan, newest first. */
+  async findDecisions(id: string): Promise<LoanDecisionDto[]> {
+    const loan = await this.prisma.loan.findUnique({ where: { id } });
+    if (!loan) throw new NotFoundException('Loan not found');
+
+    const decisions = await this.prisma.loanDecision.findMany({
+      where: { loanId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+    return decisions.map(toLoanDecisionDto);
   }
 }

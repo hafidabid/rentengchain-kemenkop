@@ -5,4 +5,8 @@ export class RejectDto {
   @IsOptional()
   @IsString()
   reason?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
