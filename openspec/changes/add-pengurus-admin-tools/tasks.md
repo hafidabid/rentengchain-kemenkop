@@ -1,8 +1,8 @@
 ## 1. Schema + shared
 
-- [ ] 1.1 Prisma: add `members.must_change_password` (bool), `loans.catatan_pengurus` (text?), new `loan_decisions` and `renteng_events` tables; migration + regenerate client
-- [ ] 1.2 Config + `.env.example`: `GEMINI_MODEL`, `GEMINI_API_KEY`, `REDIS_URL`, `METADATA_REFRESH_MS`, `ASSISTANT_WEB_GROUNDING`; add optional `redis` service to docker-compose
-- [ ] 1.3 Add deps: `exceljs`, `ioredis` (backend); a chart approach for frontend (self-contained SVG components)
+- [x] 1.1 Prisma: add `members.must_change_password` (bool), `loans.catatan_pengurus` (text?), new `loan_decisions` and `renteng_events` tables; migration + regenerate client
+- [x] 1.2 Config + `.env.example`: `GEMINI_MODEL`, `GEMINI_API_KEY`, `REDIS_URL`, `METADATA_REFRESH_MS`, `ASSISTANT_WEB_GROUNDING`; add optional `redis` service to docker-compose
+- [x] 1.3 Add deps: `exceljs`, `ioredis` (backend); a chart approach for frontend (self-contained SVG components)
 
 ## 2. KYC review (`kyc-review`)
 

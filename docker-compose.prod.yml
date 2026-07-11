@@ -20,12 +20,24 @@ services:
       timeout: 5s
       retries: 20
 
+  redis:
+    image: redis:7-alpine
+    container_name: rantairenteng-redis
+    restart: unless-stopped
+    volumes:
+      - rantairenteng_redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build:
       context: ./backend
     container_name: rantairenteng-backend
     restart: unless-stopped
-    # Secrets (relayer/admin keys, JWT, S3) come from backend/.env on the server.
+    # Secrets (relayer/admin keys, JWT, S3, Gemini) come from backend/.env on the server.
     env_file:
       - ./backend/.env
     # These override anything in backend/.env for the container environment.
@@ -34,8 +46,11 @@ services:
       PORT: '3001'
       DATABASE_URL: postgresql://${DB_USER:-rantai}:${DB_PASSWORD:-rantai_prod_pw}@db:5432/${DB_NAME:-rantairenteng}?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     ports:
       - '127.0.0.1:3001:3001'
@@ -55,3 +70,4 @@ services:
 
 volumes:
   rantairenteng_pgdata:
+  rantairenteng_redis:

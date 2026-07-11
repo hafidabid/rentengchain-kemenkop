@@ -81,8 +81,9 @@ model Member {
   walletAddress    String?   @map("wallet_address") @db.VarChar(42)
 
   // Auth (foundation) — never serialized in API responses.
-  role         Role    @default(Anggota)
-  passwordHash String? @map("password_hash") @db.VarChar(255)
+  role                Role    @default(Anggota)
+  passwordHash        String? @map("password_hash") @db.VarChar(255)
+  mustChangePassword  Boolean @default(false) @map("must_change_password")
 
   // Web3 (populated by add-web3-relayer; nullable here so no later schema change).
   encryptedPrivkey  String? @map("encrypted_privkey")
@@ -91,10 +92,11 @@ model Member {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  ledGroups    Group[]             @relation("GroupKetua")
-  memberships  MemberGroup[]
-  loans        Loan[]
-  savings      SavingTransaction[]
+  ledGroups     Group[]             @relation("GroupKetua")
+  memberships   MemberGroup[]
+  loans         Loan[]
+  savings       SavingTransaction[]
+  rentengEvents RentengEvent[]
 
   @@map("members")
 }
@@ -152,11 +154,13 @@ model Loan {
   escrowContractAddress String?       @map("escrow_contract_address") @db.VarChar(42)
   onchainLoanId         BigInt?       @map("onchain_loan_id")
   txHash                String?       @map("tx_hash") @db.VarChar(66)
+  catatanPengurus       String?       @map("catatan_pengurus")
   createdAt             DateTime      @default(now()) @map("created_at")
   updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at")
 
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member    Member         @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  group     Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  decisions LoanDecision[]
 
   @@map("loans")
 }
@@ -186,4 +190,36 @@ model AuditLog {
   txHash    String?  @map("tx_hash") @db.VarChar(66)
 
   @@map("audit_logs")
+}
+
+// Immutable log of Pengurus loan decisions (approve/reject/hold/appeal resolution).
+model LoanDecision {
+  id        String   @id @default(uuid()) @db.Uuid
+  loanId    String   @map("loan_id") @db.Uuid
+  decision  String   @db.VarChar(30)
+  note      String?
+  aktor     String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+  @@map("loan_decisions")
+}
+
+// Tanggung-renteng history events per member/loan (bailout, talangan repayment).
+model RentengEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  memberId  String   @map("member_id") @db.Uuid
+  loanId    String   @map("loan_id") @db.Uuid
+  event     String   @db.VarChar(30)
+  amount    Decimal  @default(0) @db.Decimal(15, 2)
+  period    Int      @default(0)
+  txHash    String?  @map("tx_hash") @db.VarChar(66)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@map("renteng_events")
 }
