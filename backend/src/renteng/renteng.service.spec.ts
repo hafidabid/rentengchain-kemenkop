@@ -8,6 +8,7 @@ describe('RentengService', () => {
   let prisma: {
     loan: { findUnique: jest.Mock; update: jest.Mock };
     group: { findUnique: jest.Mock; update: jest.Mock };
+    rentengEvent: { create: jest.Mock };
   };
   let contract: { trySubmit: jest.Mock };
   let audit: { append: jest.Mock };
@@ -44,6 +45,7 @@ describe('RentengService', () => {
     prisma = {
       loan: { findUnique: jest.fn(), update: jest.fn() },
       group: { findUnique: jest.fn(), update: jest.fn() },
+      rentengEvent: { create: jest.fn().mockResolvedValue(undefined) },
     };
     contract = {
       trySubmit: jest.fn().mockResolvedValue({ ok: true, txHash: '0xabc' }),
@@ -283,5 +285,60 @@ describe('RentengService', () => {
       service.repayTalangan('nope', { amount: 100 }, pengurus),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.loan.update).not.toHaveBeenCalled();
+  });
+
+  // ---------- renteng history events ----------
+  it('bailout writes a Ditalangi renteng event with the covered amount', async () => {
+    prisma.loan.findUnique.mockResolvedValue(baseLoan);
+    prisma.group.findUnique.mockResolvedValue(group);
+    prisma.loan.update.mockResolvedValue({ ...baseLoan, statusCicilan: 'DITALANGI' });
+    prisma.group.update.mockResolvedValue({ ...group, kasSosial: 150000 });
+
+    await service.bailout('l-1', { period: 1 }, pengurus);
+
+    expect(prisma.rentengEvent.create).toHaveBeenCalledWith({
+      data: {
+        memberId: 'm-1',
+        loanId: 'l-1',
+        event: 'Ditalangi',
+        amount: 100000,
+        period: 1,
+        txHash: '0xabc',
+      },
+    });
+  });
+
+  it('repay-talangan writes a TalanganLunas renteng event with period 0', async () => {
+    prisma.loan.findUnique.mockResolvedValue({
+      ...baseLoan,
+      statusCicilan: 'DITALANGI',
+    });
+    prisma.loan.update.mockResolvedValue({ ...baseLoan, statusCicilan: 'PAID' });
+
+    await service.repayTalangan('l-1', { amount: 100000 }, pengurus);
+
+    expect(prisma.rentengEvent.create).toHaveBeenCalledWith({
+      data: {
+        memberId: 'm-1',
+        loanId: 'l-1',
+        event: 'TalanganLunas',
+        amount: 100000,
+        period: 0,
+        txHash: '0xabc',
+      },
+    });
+  });
+
+  it('bailout still returns DITALANGI when the renteng event write fails', async () => {
+    prisma.loan.findUnique.mockResolvedValue(baseLoan);
+    prisma.group.findUnique.mockResolvedValue(group);
+    prisma.loan.update.mockResolvedValue({ ...baseLoan, statusCicilan: 'DITALANGI' });
+    prisma.group.update.mockResolvedValue({ ...group, kasSosial: 150000 });
+    prisma.rentengEvent.create.mockRejectedValue(new Error('db down'));
+
+    const result = await service.bailout('l-1', { period: 1 }, pengurus);
+
+    expect(result.loan.statusCicilan).toBe('DITALANGI');
+    expect(result.group.kasSosial).toBe(150000);
   });
 });

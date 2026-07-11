@@ -123,6 +123,24 @@ export class RentengService {
       txHash,
     );
 
+    // Best-effort renteng history row. A failure here must never break the bailout.
+    try {
+      await this.prisma.rentengEvent.create({
+        data: {
+          memberId: loan.memberId,
+          loanId,
+          event: 'Ditalangi',
+          amount: covered,
+          period,
+          txHash,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to write Ditalangi renteng event for loan ${loanId}: ${String(err)}`,
+      );
+    }
+
     return {
       loan: toLoanDto(updatedLoan),
       group: {
@@ -164,6 +182,24 @@ export class RentengService {
       `Talangan repaid for loan ${loanId} amount ${dto.amount}`,
       txHash,
     );
+
+    // Best-effort renteng history row. A failure here must never break the settlement.
+    try {
+      await this.prisma.rentengEvent.create({
+        data: {
+          memberId: loan.memberId,
+          loanId,
+          event: 'TalanganLunas',
+          amount: dto.amount,
+          period: 0,
+          txHash,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to write TalanganLunas renteng event for loan ${loanId}: ${String(err)}`,
+      );
+    }
 
     return toLoanDto(updated);
   }

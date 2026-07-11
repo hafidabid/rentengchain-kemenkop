@@ -5,7 +5,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { MemberDto } from '../common/serializers';
-import { MembersService } from './members.service';
+import { MemberDetailDto, MembersService } from './members.service';
 
 @Controller('members')
 export class MembersController {
@@ -23,6 +23,14 @@ export class MembersController {
   @UseGuards(JwtAuthGuard)
   findMe(@CurrentUser() user: AuthUser): Promise<MemberDto> {
     return this.membersService.findOne(user.userId);
+  }
+
+  // Declared before ':id' so 'detail' is resolved against the right handler.
+  @Get(':id/detail')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Pengurus)
+  detail(@Param('id') id: string): Promise<MemberDetailDto> {
+    return this.membersService.detail(id);
   }
 
   @Get(':id')
