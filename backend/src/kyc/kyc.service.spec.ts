@@ -1,6 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Prisma, Role, StatusKyc } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { AuditLogService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OnchainSyncService } from '../web3/onchain-sync.service';
@@ -47,6 +48,14 @@ describe('KycService', () => {
     onchainRegistered: false,
     createdAt: new Date(),
     updatedAt: new Date(),
+  };
+
+  // A member awaiting approval who has never set a usable password.
+  const noPasswordMember = {
+    ...requestedMember,
+    id: 'm-nopass',
+    passwordHash: null,
+    mustChangePassword: false,
   };
 
   const submitDto: SubmitKycDto = {
@@ -232,6 +241,105 @@ describe('KycService', () => {
       expect.stringContaining(WALLET),
       undefined,
     );
+  });
+
+  // --- Positive: approve issues a one-time temp password ---
+  it('approve of a no-password member returns a hashed-verifiable tempPassword and flags mustChangePassword', async () => {
+    prisma.member.findUnique
+      .mockResolvedValueOnce(noPasswordMember) // existence check
+      .mockResolvedValueOnce({
+        ...noPasswordMember,
+        statusKyc: StatusKyc.Approved,
+        walletAddress: WALLET,
+        mustChangePassword: true,
+      }); // final re-fetch
+    prisma.member.update.mockResolvedValue({});
+
+    const result = await service.approve('m-nopass');
+
+    expect(result.tempPassword).toBeTruthy();
+    const tempPassword = result.tempPassword as string;
+
+    const updateArg = prisma.member.update.mock.calls[0][0];
+    expect(updateArg.where).toEqual({ id: 'm-nopass' });
+    expect(updateArg.data.statusKyc).toBe(StatusKyc.Approved);
+    expect(updateArg.data.mustChangePassword).toBe(true);
+    // The stored hash is never the plaintext, but must verify against it.
+    expect(updateArg.data.passwordHash).not.toBe(tempPassword);
+    expect(bcrypt.compareSync(tempPassword, updateArg.data.passwordHash)).toBe(
+      true,
+    );
+  });
+
+  it('approve of a no-password member never leaks secrets in the returned DTO', async () => {
+    prisma.member.findUnique
+      .mockResolvedValueOnce(noPasswordMember)
+      .mockResolvedValueOnce({
+        ...noPasswordMember,
+        statusKyc: StatusKyc.Approved,
+        walletAddress: WALLET,
+      });
+    prisma.member.update.mockResolvedValue({});
+
+    const result = await service.approve('m-nopass');
+    expect((result as any).passwordHash).toBeUndefined();
+    expect((result as any).encryptedPrivkey).toBeUndefined();
+  });
+
+  // --- Edge: approve does NOT rotate an existing password ---
+  it('approve of an already-approved member WITH a passwordHash does not rotate or return a tempPassword', async () => {
+    const approved = {
+      ...requestedMember,
+      statusKyc: StatusKyc.Approved,
+      walletAddress: WALLET,
+      passwordHash: 'existing-hash',
+    };
+    prisma.member.findUnique
+      .mockResolvedValueOnce(approved)
+      .mockResolvedValueOnce(approved);
+    prisma.member.update.mockResolvedValue(approved);
+
+    const result = await service.approve('m-ira');
+
+    expect(result.tempPassword).toBeUndefined();
+    const updateArg = prisma.member.update.mock.calls[0][0];
+    expect(updateArg.data).toEqual({ statusKyc: StatusKyc.Approved });
+    expect(updateArg.data.passwordHash).toBeUndefined();
+  });
+
+  // --- Positive: resetPassword rotates the credential ---
+  it('resetPassword returns a fresh hashed-verifiable tempPassword and flags mustChangePassword', async () => {
+    prisma.member.findUnique.mockResolvedValue(requestedMember);
+    prisma.member.update.mockResolvedValue({});
+
+    const result = await service.resetPassword('m-ira');
+
+    expect(result.tempPassword).toBeTruthy();
+    const updateArg = prisma.member.update.mock.calls[0][0];
+    expect(updateArg.where).toEqual({ id: 'm-ira' });
+    expect(updateArg.data.mustChangePassword).toBe(true);
+    expect(updateArg.data.passwordHash).not.toBe(result.tempPassword);
+    expect(
+      bcrypt.compareSync(result.tempPassword, updateArg.data.passwordHash),
+    ).toBe(true);
+  });
+
+  it('resetPassword issues a different password than a prior one (rotation)', async () => {
+    prisma.member.findUnique.mockResolvedValue(requestedMember);
+    prisma.member.update.mockResolvedValue({});
+
+    const first = await service.resetPassword('m-ira');
+    const second = await service.resetPassword('m-ira');
+    expect(first.tempPassword).not.toBe(second.tempPassword);
+  });
+
+  // --- Negative: resetPassword unknown id ---
+  it('resetPassword throws NotFoundException for an unknown id', async () => {
+    prisma.member.findUnique.mockResolvedValue(null);
+    await expect(service.resetPassword('nope')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(prisma.member.update).not.toHaveBeenCalled();
   });
 
   // --- Positive: reject ---

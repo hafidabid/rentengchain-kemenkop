@@ -4,12 +4,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Role, StatusKyc } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { AuditLogService } from '../audit/audit.service';
 import { MemberDto, toMemberDto } from '../common/serializers';
 import { PrismaService } from '../prisma/prisma.service';
 import { OnchainSyncService } from '../web3/onchain-sync.service';
 import { WalletService } from '../web3/wallet.service';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
+import { generateTempPassword } from './password.util';
+
+/** Matches the salt-round cost used by auth for password hashing. */
+const BCRYPT_SALT_ROUNDS = 10;
 
 /**
  * Flow ①: onboarding + wallet mint. Orchestrates member-registry, custodial-
@@ -62,15 +67,30 @@ export class KycService {
    * anchor registration on-chain (best-effort), and audit with the resulting
    * txHash. Re-approving an already-Approved member keeps the existing wallet.
    */
-  async approve(id: string): Promise<MemberDto> {
+  async approve(id: string): Promise<MemberDto & { tempPassword?: string }> {
     const existing = await this.prisma.member.findUnique({ where: { id } });
     if (!existing) {
       throw new NotFoundException('Member not found');
     }
 
+    // Only issue a one-time password when the member has no usable one yet.
+    // A re-approve of a member who already has a password does NOT rotate it.
+    let tempPassword: string | undefined;
+    const approveData: Prisma.MemberUpdateInput = {
+      statusKyc: StatusKyc.Approved,
+    };
+    if (!existing.passwordHash) {
+      tempPassword = generateTempPassword();
+      approveData.passwordHash = bcrypt.hashSync(
+        tempPassword,
+        BCRYPT_SALT_ROUNDS,
+      );
+      approveData.mustChangePassword = true;
+    }
+
     await this.prisma.member.update({
       where: { id },
-      data: { statusKyc: StatusKyc.Approved },
+      data: approveData,
     });
 
     const walletAddress = await this.walletService.ensureWallet(id);
@@ -84,7 +104,30 @@ export class KycService {
     );
 
     const member = await this.prisma.member.findUnique({ where: { id } });
-    return toMemberDto(member as Record<string, any>);
+    return { ...toMemberDto(member as Record<string, any>), tempPassword };
+  }
+
+  /**
+   * Pengurus rotates a member's credential: generate a fresh one-time password,
+   * store only its hash, flag mustChangePassword, and return the plaintext once.
+   * The previous password stops working. 404 if the member does not exist.
+   */
+  async resetPassword(id: string): Promise<{ tempPassword: string }> {
+    const existing = await this.prisma.member.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const tempPassword = generateTempPassword();
+    await this.prisma.member.update({
+      where: { id },
+      data: {
+        passwordHash: bcrypt.hashSync(tempPassword, BCRYPT_SALT_ROUNDS),
+        mustChangePassword: true,
+      },
+    });
+
+    return { tempPassword };
   }
 
   /**

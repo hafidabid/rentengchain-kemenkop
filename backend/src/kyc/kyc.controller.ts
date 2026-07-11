@@ -57,8 +57,18 @@ export class KycController {
   @Post('approve/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.Pengurus)
-  approve(@Param('id') id: string): Promise<MemberDto> {
+  approve(
+    @Param('id') id: string,
+  ): Promise<MemberDto & { tempPassword?: string }> {
     return this.kycService.approve(id);
+  }
+
+  /** Pengurus rotates a member's credential and returns a new one-time password. */
+  @Post(':id/reset-password')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.Pengurus)
+  resetPassword(@Param('id') id: string): Promise<{ tempPassword: string }> {
+    return this.kycService.resetPassword(id);
   }
 
   /** Pengurus rejects: sets Rejected, audits, mints no wallet. */
