@@ -14,6 +14,11 @@ import {
   Loader2,
   RefreshCw,
   HeartHandshake,
+  KeyRound,
+  Image as ImageIcon,
+  Bot,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { formatIdr, shortAddress, formatTimestamp } from '../lib/format';
@@ -25,6 +30,12 @@ import type {
   OnchainStatus,
 } from '../types';
 import RiskScreenerTool from './RiskScreenerTool';
+import CredentialCard from './CredentialCard';
+import LoanDecisionTimeline from './LoanDecisionTimeline';
+import MemberDetailDrawer from './MemberDetailDrawer';
+import AssistantChat from './AssistantChat';
+import ERatReportPanel from './ERatReport';
+import { InfoTooltip, EwsExplainer, EWS_COPY } from './InfoTooltip';
 
 type Tab =
   | 'dashboard'
@@ -33,6 +44,7 @@ type Tab =
   | 'pinjaman'
   | 'penagihan'
   | 'laporan'
+  | 'asisten'
   | 'screener';
 type Flash = { type: 'success' | 'error'; msg: string } | null;
 
@@ -53,6 +65,15 @@ export default function PengurusView() {
   const [flash, setFlash] = useState<Flash>(null);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Admin-tools UI state
+  const [credential, setCredential] = useState<{
+    nik: string;
+    password: string;
+    nama: string;
+  } | null>(null);
+  const [loanNotes, setLoanNotes] = useState<Record<string, string>>({});
+  const [detailMemberId, setDetailMemberId] = useState<string | null>(null);
 
   const notify = useCallback((f: Flash) => {
     setFlash(f);
@@ -112,17 +133,35 @@ export default function PengurusView() {
   const handleKyc = async (id: string, action: 'approve' | 'reject') => {
     setBusyId(id);
     try {
-      const updated =
-        action === 'approve' ? await api.approveKyc(id) : await api.rejectKyc(id);
-      setMembers((prev) => prev.map((m) => (m.id === id ? updated : m)));
-      void api.listAuditLogs(100).then(setLogs).catch(() => {});
-      notify({
-        type: 'success',
-        msg:
-          action === 'approve'
-            ? `e-KYC ${updated.nama} disetujui. Dompet: ${shortAddress(updated.walletAddress)}`
-            : `Pendaftaran ${updated.nama} ditolak.`,
-      });
+      if (action === 'approve') {
+        const updated = await api.approveKyc(id);
+        const { tempPassword, ...member } = updated;
+        setMembers((prev) =>
+          prev.map((m) => (m.id === id ? (member as Member) : m)),
+        );
+        if (tempPassword) {
+          setCredential({
+            nik: member.nik,
+            password: tempPassword,
+            nama: member.nama,
+          });
+        }
+        notify({
+          type: 'success',
+          msg: `e-KYC ${member.nama} disetujui. Dompet: ${shortAddress(member.walletAddress)}`,
+        });
+      } else {
+        const updated = await api.rejectKyc(id);
+        setMembers((prev) => prev.map((m) => (m.id === id ? updated : m)));
+        notify({
+          type: 'success',
+          msg: `Pendaftaran ${updated.nama} ditolak.`,
+        });
+      }
+      void api
+        .listAuditLogs(100)
+        .then(setLogs)
+        .catch(() => {});
     } catch (err) {
       notify({
         type: 'error',
@@ -133,15 +172,45 @@ export default function PengurusView() {
     }
   };
 
+  // --- Reset a member's one-time credential ---
+  const handleResetPassword = async (m: Member) => {
+    setBusyId(m.id);
+    try {
+      const { tempPassword } = await api.resetPassword(m.id);
+      setCredential({ nik: m.nik, password: tempPassword, nama: m.nama });
+      notify({
+        type: 'success',
+        msg: `Kata sandi ${m.nama} berhasil direset (sekali tampil).`,
+      });
+      void api
+        .listAuditLogs(100)
+        .then(setLogs)
+        .catch(() => {});
+    } catch (err) {
+      notify({
+        type: 'error',
+        msg: err instanceof ApiError ? err.message : 'Reset sandi gagal.',
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   // --- Flow ②: loan approve/reject ---
   const handleLoan = async (id: string, action: 'approve' | 'reject') => {
     setBusyId(id);
     try {
+      const note = loanNotes[id]?.trim() || undefined;
       const updated =
         action === 'approve'
-          ? await api.approveLoan(id)
-          : await api.rejectLoan(id, 'Perlu klarifikasi tambahan');
+          ? await api.approveLoan(id, note)
+          : await api.rejectLoan(id, note ?? 'Perlu klarifikasi tambahan');
       setLoans((prev) => prev.map((l) => (l.id === id ? updated : l)));
+      setLoanNotes((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
       void api.listAuditLogs(100).then(setLogs).catch(() => {});
       notify({
         type: 'success',
@@ -210,6 +279,7 @@ export default function PengurusView() {
     ['pinjaman', CreditCard, 'Review Pinjaman', pendingLoans.length],
     ['penagihan', ShieldAlert, 'Tangga Penagihan', arrears.length],
     ['laporan', FileLineChart, 'Laporan & e-RAT', null],
+    ['asisten', Bot, 'Asisten AI', null],
     ['screener', ShieldCheck, 'Skrining AI EWS', null],
   ];
 
@@ -331,9 +401,11 @@ export default function PengurusView() {
                 <h4 className="text-xs font-extrabold text-[#F06A6A] uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldAlert className="w-4 h-4" /> Kelompok / Anggota Berisiko
                 </h4>
-                <span className="text-[10px] bg-[#F06A6A] text-white font-bold px-2 py-0.5 rounded-full">
-                  EWS
-                </span>
+                <InfoTooltip text={EWS_COPY} label="Tentang EWS">
+                  <span className="text-[10px] bg-[#F06A6A] text-white font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1 cursor-help">
+                    EWS <Info className="w-2.5 h-2.5" />
+                  </span>
+                </InfoTooltip>
               </div>
               <div className="divide-y divide-slate-100">
                 {loans
@@ -463,6 +535,31 @@ export default function PengurusView() {
                         {m.peran}
                       </span>
                     </p>
+                    {/* KTP document */}
+                    <div className="pt-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Dokumen KTP
+                      </span>
+                      {m.ktpUrl ? (
+                        <a
+                          href={m.ktpUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block group"
+                          title="Buka gambar KTP penuh di tab baru"
+                        >
+                          <img
+                            src={m.ktpUrl}
+                            alt={`KTP ${m.nama}`}
+                            className="h-16 w-auto max-w-[140px] object-cover rounded-lg border border-[#E4E4E4] group-hover:ring-2 group-hover:ring-[#F06A6A]/40 transition-all"
+                          />
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-400 italic bg-[#FAF9F8] border border-dashed border-[#E4E4E4] rounded-lg px-2.5 py-2">
+                          <ImageIcon className="w-3.5 h-3.5" /> Belum ada dokumen
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-2 shrink-0 items-start">
                     <button
@@ -490,24 +587,46 @@ export default function PengurusView() {
               ))
             )}
 
-            {/* Recently minted wallets */}
+            {/* Approved members: wallets + credential reset */}
             <div className="bg-white p-4 rounded-xl border border-[#E4E4E4] space-y-2">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Dompet Anggota Aktif
+                <Wallet className="w-3.5 h-3.5 text-[#F06A6A]" /> Anggota Aktif &
+                Kredensial
               </span>
               {members
-                .filter((m) => m.walletAddress)
+                .filter((m) => m.statusKyc === 'Approved')
                 .map((m) => (
                   <div
                     key={m.id}
-                    className="flex justify-between items-center text-xs border-b border-slate-100 pb-1.5 last:border-0"
+                    className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs border-b border-slate-100 pb-2 last:border-0"
                   >
-                    <span className="font-bold text-slate-700">{m.nama}</span>
-                    <span className="font-mono text-[11px] text-[#6D6E6F]">
-                      {m.walletAddress}
-                    </span>
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-700 block">
+                        {m.nama}
+                      </span>
+                      <span className="font-mono text-[11px] text-[#6D6E6F] break-all">
+                        {m.walletAddress ?? 'Dompet belum diterbitkan'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleResetPassword(m)}
+                      disabled={busyId === m.id}
+                      className="shrink-0 self-start sm:self-auto inline-flex items-center gap-1.5 bg-[#FAF9F8] hover:bg-[#FCE8E6]/50 border border-[#E4E4E4] text-[#F06A6A] font-bold px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {busyId === m.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <KeyRound className="w-3.5 h-3.5" />
+                      )}
+                      Reset kata sandi
+                    </button>
                   </div>
                 ))}
+              {members.filter((m) => m.statusKyc === 'Approved').length === 0 && (
+                <p className="text-[11px] text-slate-400 italic">
+                  Belum ada anggota aktif.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -554,17 +673,19 @@ export default function PengurusView() {
                   </div>
                   <div className="space-y-1.5">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Anggota ({g.anggotaIds.length})
+                      Anggota ({g.anggotaIds.length}) · klik untuk detail
                     </span>
                     {g.anggotaIds.map((id) => (
-                      <div
+                      <button
                         key={id}
-                        className="text-xs flex justify-between bg-[#FAF9F8] px-2.5 py-1.5 rounded"
+                        onClick={() => setDetailMemberId(id)}
+                        className="w-full text-xs flex justify-between items-center bg-[#FAF9F8] hover:bg-[#FCE8E6]/50 border border-transparent hover:border-[#F06A6A]/20 px-2.5 py-1.5 rounded transition-colors group"
                       >
-                        <span className="font-semibold text-slate-700">
+                        <span className="font-semibold text-slate-700 group-hover:text-[#F06A6A]">
                           {memberName(id)}
                         </span>
-                      </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#F06A6A]" />
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -600,6 +721,9 @@ export default function PengurusView() {
                     <span className="text-xs font-extrabold flex items-center gap-1">
                       <Activity className="w-4 h-4" /> REKOMENDASI AI: {l.flagAi} (Skor{' '}
                       {l.skorAi}/100)
+                      <InfoTooltip text={EWS_COPY} label="Tentang skor EWS">
+                        <Info className="w-3.5 h-3.5 opacity-70" />
+                      </InfoTooltip>
                     </span>
                     <span className="text-[10px] font-bold uppercase">
                       {l.isSanggah ? 'Ada Sanggahan Anggota' : 'Menunggu Review'}
@@ -650,6 +774,30 @@ export default function PengurusView() {
                         <p className="italic">"{l.sanggahAlasan}"</p>
                       </div>
                     )}
+
+                    <EwsExplainer />
+
+                    {/* Decision-history timeline */}
+                    <LoanDecisionTimeline loanId={l.id} />
+
+                    {/* Pengurus note to member */}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Catatan untuk anggota
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={loanNotes[l.id] ?? ''}
+                        onChange={(e) =>
+                          setLoanNotes((prev) => ({
+                            ...prev,
+                            [l.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Contoh: Disetujui dengan penyesuaian tenor / Perlu klarifikasi slip penghasilan…"
+                        className="w-full text-xs border border-[#E4E4E4] rounded-xl px-3 py-2 bg-[#FAF9F8] focus:bg-white focus:ring-1 focus:ring-[#F06A6A] outline-none"
+                      />
+                    </div>
 
                     <div className="flex justify-end gap-2 border-t border-[#E4E4E4] pt-3">
                       <button
@@ -765,34 +913,8 @@ export default function PengurusView() {
                 Rekapitulasi neraca real-time dari ledger koperasi.
               </p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-[#E4E4E4] space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Cell
-                  label="Total Aset Likuid (Tabungan)"
-                  value={formatIdr(totalSavings)}
-                  big
-                />
-                <Cell
-                  label="Total Piutang (Escrow)"
-                  value={formatIdr(outstanding)}
-                  accent="#548235"
-                  big
-                />
-                <Cell
-                  label="Jumlah Kelompok"
-                  value={`${groups.length}`}
-                  big
-                />
-                <Cell label="Keanggotaan" value={`${members.length} orang`} big />
-              </div>
-              <div className="p-3 bg-[#EDF9F0] border border-[#62D26F]/20 rounded-xl text-slate-700 space-y-1">
-                <h4 className="font-bold text-[#1E1F21]">Rasio NPL Terkendali</h4>
-                <p className="text-[#6D6E6F]">
-                  Agunan sosial tanggung renteng menahan gagal bayar di{' '}
-                  <strong className="text-[#548235]">{nplRate}%</strong>.
-                </p>
-              </div>
-            </div>
+            {/* e-RAT report: stat cards, SVG charts, data tables, XLSX export */}
+            <ERatReportPanel />
 
             {/* On-chain status + bootstrap */}
             <div className="bg-white p-5 rounded-xl border border-[#E4E4E4] space-y-3">
@@ -834,21 +956,61 @@ export default function PengurusView() {
           </div>
         )}
 
+        {/* ASISTEN AI (Flow ⑤) */}
+        {activeTab === 'asisten' && (
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-black text-[#1E1F21]">Asisten AI Koperasi</h2>
+              <p className="text-xs text-[#6D6E6F]">
+                Tanya jawab data koperasi — grounded pada snapshot ledger real-time
+                (Gemini).
+              </p>
+            </div>
+            <AssistantChat />
+          </div>
+        )}
+
         {/* SCREENER */}
         {activeTab === 'screener' && (
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-black text-[#1E1F21]">
+              <h2 className="text-xl font-black text-[#1E1F21] flex items-center gap-1.5">
                 Asisten Skrining EWS AI (Kalkulator Manual)
+                <InfoTooltip text={EWS_COPY} label="Tentang EWS">
+                  <Info className="w-4 h-4 text-[#F06A6A]" />
+                </InfoTooltip>
               </h2>
               <p className="text-xs text-[#6D6E6F]">
                 Hitung kelayakan secara transparan sebelum pencairan.
               </p>
             </div>
+            <EwsExplainer />
             <RiskScreenerTool />
           </div>
         )}
       </div>
+
+      {/* One-time credential card (KYC approve / password reset) */}
+      {credential && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm">
+            <CredentialCard
+              nik={credential.nik}
+              password={credential.password}
+              nama={credential.nama}
+              onClose={() => setCredential(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Member detail drawer */}
+      {detailMemberId && (
+        <MemberDetailDrawer
+          memberId={detailMemberId}
+          onClose={() => setDetailMemberId(null)}
+        />
+      )}
     </div>
   );
 }
