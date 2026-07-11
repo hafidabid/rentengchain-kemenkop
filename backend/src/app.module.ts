@@ -11,6 +11,8 @@ import { SavingsModule } from './savings/savings.module';
 import { LoansModule } from './loans/loans.module';
 import { RentengModule } from './renteng/renteng.module';
 import { AdminModule } from './admin/admin.module';
+import { AssistantModule } from './assistant/assistant.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { AdminModule } from './admin/admin.module';
     LoansModule,
     RentengModule,
     AdminModule,
+    AssistantModule,
+    ReportsModule,
   ],
   controllers: [HealthController],
 })
